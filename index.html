@@ -130,6 +130,10 @@
     .progress-fill { width: 10%; height: 100%; background: var(--gold); transition: width .2s ease; }
     .candidate-mini { margin-top: 30px; color: var(--ivory-dim); font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
     .candidate-mini strong { color: var(--ivory); }
+    .resume { border:1px solid #d5b870; padding:14px 16px; margin:0 0 18px; background:rgba(213,184,112,.06); }
+    .resume p { margin:0 0 10px; }
+    .resume-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    #saveNote { display:block; font-size:11px; opacity:.65; margin-top:8px; min-height:14px; }
     .question-wrap { max-width: 770px; }
     .section-label { margin: 4px 0 10px; color: var(--gold-bright); text-transform: uppercase; letter-spacing: .17em; font-size: 11px; font-weight: 900; }
     .canon-note { margin: 0 0 24px; color: var(--ivory-dim); font: 750 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; }
@@ -323,6 +327,13 @@
     <section class="paper" aria-live="polite">
       <div class="view" id="introView">
         <div class="seal-line">Ramhead Company · First-Issue Division · Form 01</div>
+        <div class="resume" id="resumeBar" hidden>
+          <p id="resumeText"></p>
+          <div class="resume-actions">
+            <button class="primary" id="resumeBtn" type="button">Resume</button>
+            <button class="secondary" id="freshBtn" type="button">Start over</button>
+          </div>
+        </div>
         <div class="intro-grid">
           <div>
             <h1>New operative <em>onboarding.</em></h1>
@@ -352,6 +363,7 @@
             <div class="rail-label"><span id="questionCount">of 10</span><br />canon station</div>
             <div class="progress-track" aria-label="Examination progress"><div class="progress-fill" id="progressFill"></div></div>
             <div class="candidate-mini">Candidate<br /><strong id="candidateMini"></strong><br /><span id="callSignMini"></span></div>
+            <span id="saveNote" aria-live="polite"></span>
           </aside>
           <div class="question-wrap">
             <div class="section-label" id="sectionLabel"></div>
@@ -596,6 +608,29 @@
       var backBtn = document.getElementById("backBtn");
       var answersEl = document.getElementById("answers");
 
+      var SAVE_KEY = "ranh-company-card-save-v1";
+      var canStore = (function () { try { localStorage.setItem("__ranh_t","1"); localStorage.removeItem("__ranh_t"); return true; } catch (e) { return false; } })();
+      function saveProgress(completed) {
+        if (!canStore) return;
+        try {
+          localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, candidate:candidate, callsign:callsign, picks:picks, current:current, result:result, completed:!!completed }));
+          var n = document.getElementById("saveNote"); if (n) n.textContent = "Progress saved";
+        } catch (e) {}
+      }
+      function clearSave() {
+        if (canStore) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+        var n = document.getElementById("saveNote"); if (n) n.textContent = "";
+      }
+      function readSave() {
+        if (!canStore) return null;
+        try { var s = JSON.parse(localStorage.getItem(SAVE_KEY)); return (s && s.v === 1 && s.candidate) ? s : null; }
+        catch (e) { return null; }
+      }
+      function setMinis() {
+        document.getElementById("candidateMini").textContent = candidate;
+        document.getElementById("callSignMini").textContent = callsign ? "Call-sign: " + callsign : "Call-sign: pending";
+      }
+
       function show(view) {
         introView.hidden = view !== "intro";
         examView.hidden = view !== "exam";
@@ -618,6 +653,7 @@
         current = 0;
         show("exam");
         renderQuestion();
+        saveProgress(false);
       });
 
       document.getElementById("candidateName").addEventListener("input", function () {
@@ -654,13 +690,14 @@
           button.setAttribute("aria-pressed", i === index ? "true" : "false");
         });
         nextBtn.disabled = false;
+        saveProgress(false);
       }
 
-      backBtn.addEventListener("click", function () { if (current > 0) { current -= 1; renderQuestion(); } });
+      backBtn.addEventListener("click", function () { if (current > 0) { current -= 1; renderQuestion(); saveProgress(false); } });
       nextBtn.addEventListener("click", function () {
         if (picks[current] === null) return;
-        if (current < 9) { current += 1; renderQuestion(); }
-        else { calculateResult(); renderHub(); show("hub"); }
+        if (current < 9) { current += 1; renderQuestion(); saveProgress(false); }
+        else { calculateResult(); renderHub(); show("hub"); saveProgress(true); }
       });
 
       document.addEventListener("keydown", function (event) {
@@ -814,6 +851,7 @@
       document.getElementById("svgBtn").addEventListener("click", function () { downloadFile(slugify(callsign || candidate) + "-company-card.svg", standaloneSVG(), "image/svg+xml;charset=utf-8"); setStatus("SVG Company Card downloaded."); });
       document.getElementById("textBtn").addEventListener("click", function () { downloadFile(slugify(callsign || candidate) + "-operative-dossier.txt", dossierText(), "text/plain;charset=utf-8"); setStatus("Text dossier downloaded."); });
       document.getElementById("restartBtn").addEventListener("click", function () {
+        clearSave();
         picks = new Array(10).fill(null); current = 0; result = null; hp = 25; round = 1;
         entryForm.reset(); document.getElementById("entryError").textContent = ""; show("intro");
       });
@@ -869,6 +907,37 @@
       function escapeHTML(text) { return String(text).replace(/[&<>'"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c];}); }
       function escapeXML(text) { return escapeHTML(text); }
       function slugify(text) { return text.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "operative"; }
+
+      (function initResume() {
+        var s = readSave(); if (!s) return;
+        var bar = document.getElementById("resumeBar");
+        var txt = document.getElementById("resumeText");
+        var goBtn = document.getElementById("resumeBtn");
+        bar.hidden = false;
+        if (s.completed && s.result) {
+          txt.textContent = "Welcome back, " + s.candidate + ". Your Company Card is already issued.";
+          goBtn.textContent = "Open your Company Card";
+          goBtn.onclick = function () {
+            candidate = s.candidate; callsign = s.callsign || ""; picks = s.picks; current = s.current; result = s.result;
+            setMinis(); renderHub(); show("hub"); bar.hidden = true;
+          };
+        } else {
+          var done = 0, i;
+          for (i = 0; i < s.picks.length; i++) if (s.picks[i] !== null) done++;
+          txt.textContent = "Welcome back, " + s.candidate + ". Your examination is waiting at station " + (s.current + 1) + " of 10 (" + done + " answered).";
+          goBtn.textContent = "Resume examination";
+          goBtn.onclick = function () {
+            candidate = s.candidate; callsign = s.callsign || ""; picks = s.picks; current = s.current;
+            document.getElementById("candidateName").value = candidate;
+            document.getElementById("callSign").value = callsign;
+            setMinis(); show("exam"); renderQuestion(); saveProgress(false); bar.hidden = true;
+          };
+        }
+        document.getElementById("freshBtn").onclick = function () {
+          clearSave(); picks = new Array(10).fill(null); current = 0; result = null; candidate = ""; callsign = "";
+          entryForm.reset(); document.getElementById("entryError").textContent = ""; bar.hidden = true; show("intro");
+        };
+      })();
     }());
   </script>
 </body>
