@@ -148,6 +148,12 @@
     .face > * { position:relative; }
     .fmast { color:#d5b870; font:800 8px/1.5 ui-monospace,monospace; letter-spacing:.14em; }
     .fname { margin:34px 0 0; font:400 clamp(34px,6vw,48px)/0.95 Georgia,serif; letter-spacing:-.02em; overflow-wrap:anywhere; }
+    .face-top { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+    .face-top .fname { margin:10px 0 0; }
+    .face-id { min-width:0; }
+    .face-photo { width:104px; height:126px; flex:none; border:1px solid #a78f59; background:#0c0e09; display:grid; place-items:center; position:relative; overflow:hidden; }
+    .face-photo span { font-size:42px; color:#6a6a62; font-family:Georgia,serif; }
+    .face-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.05); }
     .fcall { margin-top:6px; color:#d5b870; font:italic 15px/1.3 Georgia,serif; }
     .frule { height:1px; background:rgba(213,184,112,.35); margin:18px 0 14px; }
     .fgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; }
@@ -457,9 +463,14 @@
 
         <section class="panel" role="tabpanel" id="panel-card" aria-labelledby="dot-card">
           <div class="face" id="cardPreview" aria-label="Issued Relic Card">
-            <div class="fmast">RELIC AGE: NEW HORIZON · FIRST ISSUE</div>
-            <div class="fname" id="cardName"></div>
-            <div class="fcall" id="cardCall"></div>
+            <div class="face-top">
+              <div class="face-id">
+                <div class="fmast">RELIC AGE: NEW HORIZON · FIRST ISSUE</div>
+                <div class="fname" id="cardName"></div>
+                <div class="fcall" id="cardCall"></div>
+              </div>
+              <div class="face-photo" id="facePhoto"><span id="facePhotoInitial">?</span><img id="facePhotoImg" hidden alt="Operative portrait"></div>
+            </div>
             <div class="frule"></div>
             <div class="fgrid">
               <div><small>License</small><b id="cardLicense"></b></div>
@@ -851,7 +862,9 @@
         document.getElementById("cardOSR").textContent = result.osr.join(" / ");
         document.getElementById("cardTraits").textContent = result.traits.join(" · ");
         document.getElementById("cardQuote").textContent = "“" + result.quote + "”";
-        document.getElementById("idPhotoInitial").textContent = (candidate.trim().charAt(0) || "?").toUpperCase();
+        var faceInitial = (candidate.trim().charAt(0) || "?").toUpperCase();
+        document.getElementById("idPhotoInitial").textContent = faceInitial;
+        document.getElementById("facePhotoInitial").textContent = faceInitial;
         document.getElementById("idLicense").textContent = result.license;
         document.getElementById("idProfile").textContent = result.profile;
         document.getElementById("idAlign").textContent = result.alignment;
@@ -1070,8 +1083,21 @@
         var img = document.getElementById("idPhotoImg");
         var initial = document.getElementById("idPhotoInitial");
         var clearBtn = document.getElementById("portraitClearBtn");
-        if (portrait && img) { img.src = portrait; img.hidden = false; initial.style.display = "none"; if (clearBtn) clearBtn.hidden = false; }
-        else if (img) { img.removeAttribute("src"); img.hidden = true; initial.style.display = ""; if (clearBtn) clearBtn.hidden = true; }
+        var fimg = document.getElementById("facePhotoImg");
+        var finitial = document.getElementById("facePhotoInitial");
+        if (portrait) {
+          if (img) { img.src = portrait; img.hidden = false; }
+          if (initial) initial.style.display = "none";
+          if (fimg) { fimg.src = portrait; fimg.hidden = false; }
+          if (finitial) finitial.style.display = "none";
+          if (clearBtn) clearBtn.hidden = false;
+        } else {
+          if (img) { img.removeAttribute("src"); img.hidden = true; }
+          if (initial) initial.style.display = "";
+          if (fimg) { fimg.removeAttribute("src"); fimg.hidden = true; }
+          if (finitial) finitial.style.display = "";
+          if (clearBtn) clearBtn.hidden = true;
+        }
       }
       (function initResume() {
         var s = readSave(); if (!s) return;
