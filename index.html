@@ -201,7 +201,7 @@
       .id-photowrap { display:flex; flex-direction:column; }
       .id-row { display:flex; align-items:baseline; gap:8px; margin-bottom:7px; border-bottom:1.5px solid #141414; padding-bottom:2px; }
       .id-row > span:first-child { font-family:ui-monospace,monospace; font-size:12px; font-weight:700; letter-spacing:.04em; flex:none; }
-      .hand { font-family:Georgia,serif; font-style:italic; font-weight:700; color:#2b7fd4; font-size:15px; overflow-wrap:anywhere; }
+      .hand { font-family:Georgia,serif; font-style:italic; font-weight:700; color:#2b7fd4; font-size:15px; overflow-wrap:break-word; }
       .pips { color:#2b7fd4; font-size:13px; letter-spacing:2px; }
       .id-cols { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; margin-top:12px; }
       .id-side { position:relative; display:flex; flex-direction:column; align-items:center; padding-top:6px; }
@@ -215,10 +215,14 @@
       .id-logo { display:flex; align-items:center; gap:8px; font-family:Impact,"Arial Black",sans-serif; font-size:15px; letter-spacing:.08em; }
       .id-logo i { width:26px; height:26px; background:#141414; color:#f4ead1; display:grid; place-items:center; font-style:normal; font-size:14px; }
       @media (max-width:560px) {
-        .id-body { grid-template-columns:110px 1fr; }
+        .idcard { padding:16px 16px 12px; }
+        .id-body { grid-template-columns:104px 1fr; gap:14px; }
         .id-side { display:none; }
+        .id-cols { grid-template-columns:1fr; gap:0; }
         .id-head h3 { font-size:20px; }
         .stamp { width:48px; height:48px; }
+        .hand { font-size:14px; }
+        .id-photo { aspect-ratio:3/4; }
       }
     .question-wrap { max-width: 770px; }
     .section-label { margin: 4px 0 10px; color: var(--gold-bright); text-transform: uppercase; letter-spacing: .17em; font-size: 11px; font-weight: 900; }
