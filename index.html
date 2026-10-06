@@ -300,6 +300,12 @@
     .big-track { height: 10px; border: 1px solid var(--rule); padding: 2px; }
     .big-fill { height: 100%; background: var(--gold); }
     .strain-fill { width: 0; background: var(--red); }
+    .refused-stamp { margin-top:14px; font:900 11px ui-monospace,monospace; letter-spacing:.22em; color:var(--red); border:1px dashed var(--red); padding:8px 12px; display:inline-block; }
+    .answers.refused { opacity:.45; }
+    .face.cracked { position:relative; }
+    .face.cracked::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg, transparent 46%, rgba(229,72,77,.5) 47%, transparent 48%), linear-gradient(65deg, transparent 62%, rgba(229,72,77,.38) 63%, transparent 64%); }
+    .face.critical { box-shadow:0 0 0 1px var(--red), 0 0 34px rgba(229,72,77,.35); }
+    .face-photo.glitched img { filter:grayscale(1) contrast(1.5) brightness(.85) hue-rotate(140deg) saturate(2); }
     .bias { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule-soft); margin-top: 20px; }
     .bias div { background: var(--paper-raised); padding: 13px; }
     .bias small { display: block; color: var(--ivory-dim); text-transform: uppercase; letter-spacing: .12em; font-size: 8px; }
@@ -457,8 +463,10 @@
             <div class="canon-note" id="canonNote"></div>
             <h2 class="question" id="questionText"></h2>
             <div class="answers" id="answers"></div>
+            <div class="refused-stamp" id="refusedStamp" hidden>STATION REFUSED</div>
             <div class="exam-actions">
               <button class="secondary" id="backBtn" type="button">Back</button>
+              <button class="textlink" id="refuseBtn" type="button">Refuse this station</button>
               <button class="primary" id="nextBtn" type="button" disabled>Next station</button>
             </div>
           </div>
@@ -507,8 +515,8 @@
               </div>
               <div>
                 <div class="id-row"><span>XID:</span><span class="hand" id="idLicense"></span></div>
-                <div class="id-row"><span>STATIONS:</span><span class="pips">●●●●●●●●●●</span></div>
-                <div class="id-row"><span>CLEARANCE:</span><span class="hand">STREET</span></div>
+                <div class="id-row"><span>STATIONS:</span><span class="pips" id="idPips">●●●●●●●●●●</span></div>
+                <div class="id-row"><span>CLEARANCE:</span><span class="hand" id="idClearance">STREET</span></div>
                 <div class="id-cols">
                   <div>
                     <div class="id-row"><span>PROFILE:</span><span class="hand" id="idProfile"></span></div>
@@ -544,8 +552,8 @@
             <div class="sheet">
               <h3>Affinity record</h3>
               <div class="big-bars" id="bigBars"></div>
-              <div class="big-bar-head" style="margin-top:24px"><span>Strain</span><span>0%</span></div>
-              <div class="big-track"><div class="big-fill strain-fill"></div></div>
+              <div class="big-bar-head" style="margin-top:24px"><span>Strain</span><span><span id="strainPct">0%</span> · <span id="strainBand">Safe</span></span></div>
+              <div class="big-track"><div class="big-fill strain-fill" id="strainFill"></div></div>
               <div class="bias">
                 <div><small>Profile</small><b id="biasProfile"></b></div>
                 <div><small>Alignment bias</small><b id="biasAlignment"></b></div>
@@ -622,7 +630,7 @@
                 <div class="battle-note"><small>SA · Spell</small><b id="statSA"></b></div>
                 <div class="battle-note"><small>MA · Motion</small><b id="statMA"></b></div>
                 <div class="battle-note"><small>Weight class</small><b id="statWeight"></b></div>
-                <div class="battle-note"><small>Strain</small><b>0% · Safe</b></div>
+                <div class="battle-note"><small>Strain</small><b id="battleStrain">0% · Safe</b></div>
                 <div class="battle-note"><small>Standing</small><b>Tier 1 · Street</b></div>
               </div>
             </div>
@@ -799,6 +807,10 @@
           button.addEventListener("click", function () { choose(index); });
           answersEl.appendChild(button);
         });
+        var refused = picks[current] === -1;
+        answersEl.classList.toggle("refused", refused);
+        document.getElementById("refusedStamp").hidden = !refused;
+        document.getElementById("refuseBtn").textContent = refused ? "Unrefuse this station" : "Refuse this station";
         backBtn.disabled = current === 0;
         nextBtn.disabled = picks[current] === null;
         nextBtn.textContent = current === 9 ? "Issue my card" : "Next station";
@@ -806,13 +818,15 @@
 
       function choose(index) {
         picks[current] = index;
-        Array.prototype.forEach.call(answersEl.children, function (button, i) {
-          button.classList.toggle("selected", i === index);
-          button.setAttribute("aria-pressed", i === index ? "true" : "false");
-        });
-        nextBtn.disabled = false;
+        renderQuestion();
         saveProgress(false);
       }
+      function toggleRefuse() {
+        picks[current] = picks[current] === -1 ? null : -1;
+        renderQuestion();
+        saveProgress(false);
+      }
+      document.getElementById("refuseBtn").addEventListener("click", toggleRefuse);
 
       backBtn.addEventListener("click", function () { if (current > 0) { current -= 1; renderQuestion(); saveProgress(false); } });
       nextBtn.addEventListener("click", function () {
@@ -824,16 +838,22 @@
       document.addEventListener("keydown", function (event) {
         if (examView.hidden) return;
         if (["1","2","3"].indexOf(event.key) !== -1) choose(Number(event.key) - 1);
+        if (event.key === "r" || event.key === "R") toggleRefuse();
         if (event.key === "Enter" && !nextBtn.disabled) { event.preventDefault(); nextBtn.click(); }
       });
 
+      function strainBand(s) { return s < 60 ? "Safe" : s < 80 ? "Amber · Soul-Crack risk" : "Critical"; }
+      var GLITCH_TRAITS = ["STATIC BLOOM","UNFILED","MARGIN WALKER","SIGNAL DRIFT","REDACTED","GHOST FREQUENCY"];
       function calculateResult() {
-        var totals = [0,0,0], spirit = 0, shadow = 0;
+        var totals = [0,0,0], spirit = 0, shadow = 0, refusals = 0;
         questions.forEach(function (q, i) {
+          if (picks[i] === -1 || picks[i] === null) { if (picks[i] === -1) refusals++; return; }
           var answer = q.answers[picks[i]];
           totals[0] += answer.score[0]; totals[1] += answer.score[1]; totals[2] += answer.score[2];
           spirit += answer.spirit || 0; shadow += answer.shadow || 0;
         });
+        var unregistered = refusals >= 3;
+        var strain = Math.max(0, Math.min(100, (10 - refusals) * 8 - refusals * 10));
         var pct = totals.map(function (raw) { return Math.max(25, Math.min(100, Math.round(25 + (raw / 30) * 75))); });
         var index = pct[0] + pct[1] + pct[2];
         var sorted = [0,1,2].sort(function (a,b) { return pct[b] - pct[a] || a - b; });
@@ -845,11 +865,17 @@
         var weight = index < 120 ? "ASHWEIGHT" : index < 150 ? "EMBERWEIGHT" : index < 180 ? "IRONWEIGHT" : index < 210 ? "WYRMWEIGHT" : "SOVEREIGNWEIGHT";
         var quotes = ["If it has to break, let it break against me.","Every impossible thing has rules. Show me the seam.","The opening is already gone. I moved with it."];
         var quote = triune ? "I do not choose one answer when the field demands three." : quotes[sorted[0]];
-        var traits = [7,8,9].map(function (i) { return questions[i].answers[picks[i]].trait; });
+        var traits = unregistered
+          ? [GLITCH_TRAITS[0], GLITCH_TRAITS[1], GLITCH_TRAITS[2]]
+          : [7,8,9].map(function (i, k) { return (picks[i] === -1 || picks[i] === null) ? GLITCH_TRAITS[k % GLITCH_TRAITS.length] : questions[i].answers[picks[i]].trait; });
+        if (unregistered) quote = "I did not come to be filed.";
         result = {
           scores:pct, raw:totals, osr:pct.map(function (n) { return 3 + Math.floor(n * .15); }),
           index:index, profile:profile, path:path, alignment:alignment, weight:weight, quote:quote, traits:traits,
-          license:"AH-1ST-" + randomDigits(5), serial:"RANH-" + randomCode(4) + "-" + randomCode(4)
+          license: unregistered ? "VOID-" + randomDigits(5) : "AH-1ST-" + randomDigits(5),
+          serial:"RANH-" + randomCode(4) + "-" + randomCode(4),
+          unregistered:unregistered, refusals:refusals, strain:strain, redacted:[],
+          standing: unregistered ? "Unregistered · No Standing" : "Tier 1 · Street Standing"
         };
       }
 
@@ -858,7 +884,9 @@
         document.getElementById("roundCount").textContent = "1";
         document.getElementById("zoneReadout").textContent = "Approach";
         Array.prototype.forEach.call(document.querySelectorAll(".zone"), function (z,i) { z.classList.toggle("active", i === 0); });
-        document.getElementById("hubOpLine").textContent = candidate + (callsign ? " · “" + callsign + "”" : "") + " · " + result.license + " · Tier 1 · Street Standing";
+        var strain = result.strain || 0, redacted = result.redacted || [];
+        var standing = result.standing || "Tier 1 · Street Standing";
+        document.getElementById("hubOpLine").textContent = candidate + (callsign ? " · “" + callsign + "”" : "") + " · " + result.license + " · " + standing;
         document.getElementById("cardName").textContent = candidate;
         document.getElementById("cardCall").textContent = callsign ? "“" + callsign + "”" : "Call-sign pending";
         document.getElementById("cardLicense").textContent = result.license;
@@ -879,7 +907,19 @@
         document.getElementById("idOSR").textContent = result.osr.join(" / ");
         document.getElementById("idCall").textContent = callsign ? "“" + callsign + "”" : "—";
         document.getElementById("idCardNo").textContent = "CARD NO: " + result.serial;
+        document.getElementById("idClearance").textContent = result.unregistered ? "UNREGISTERED" : "STREET";
+        document.getElementById("idPips").textContent = picks.map(function (x) { return x === -1 ? "○" : "●"; }).join("");
+        document.getElementById("strainPct").textContent = strain + "%";
+        document.getElementById("strainBand").textContent = strainBand(strain);
+        document.getElementById("strainFill").style.width = strain + "%";
+        document.getElementById("battleStrain").textContent = strain + "% · " + strainBand(strain);
+        var face = document.getElementById("cardPreview");
+        face.classList.toggle("cracked", strain >= 60 && strain < 80);
+        face.classList.toggle("critical", strain >= 80);
         renderPortrait();
+        document.getElementById("facePhoto").classList.toggle("glitched", redacted.length > 0);
+        var redactMap = { license:"cardLicense", weight:"cardWeight", alignment:"cardAlignment", path:"cardPath", osr:"cardOSR", traits:"cardTraits", quote:"cardQuote", call:"cardCall" };
+        redacted.forEach(function (key) { var el = document.getElementById(redactMap[key]); if (el) el.textContent = "█████"; });
         document.getElementById("biasProfile").textContent = result.profile;
         document.getElementById("biasAlignment").textContent = result.alignment;
         document.getElementById("biasWeight").textContent = result.weight;
@@ -909,7 +949,8 @@
 
       function renderTraits() {
         document.getElementById("traitSlots").innerHTML = result.traits.map(function (trait,i) {
-          return '<div class="slot"><div class="slot-number">TRAIT 0' + (i+1) + '</div><h3>' + escapeHTML(trait) + '</h3><p>Earned at canon station ' + (i+8) + '.</p></div>';
+          var note = result.unregistered ? "Claimed outside the stations." : "Earned at canon station " + (i+8) + ".";
+          return '<div class="slot"><div class="slot-number">TRAIT 0' + (i+1) + '</div><h3>' + escapeHTML(trait) + '</h3><p>' + note + '</p></div>';
         }).join("");
       }
 
@@ -1033,6 +1074,26 @@
       });
       document.getElementById("settingsBtn").addEventListener("click", function () { document.getElementById("settingsOverlay").hidden = false; });
       document.getElementById("settingsClose").addEventListener("click", function () { document.getElementById("settingsOverlay").hidden = true; });
+      var REDACTABLE = [["license","cardLicense"],["weight","cardWeight"],["alignment","cardAlignment"],["path","cardPath"],["osr","cardOSR"],["traits","cardTraits"],["quote","cardQuote"],["call","cardCall"]];
+      document.getElementById("corruptBtn").addEventListener("click", function () {
+        if (!result) return;
+        result.redacted = result.redacted || [];
+        var remaining = REDACTABLE.filter(function (r) { return result.redacted.indexOf(r[0]) === -1; });
+        if (!remaining.length) { document.getElementById("corruptStatus").textContent = "Nothing left to redact."; return; }
+        var pick = remaining[Math.floor(Math.random() * remaining.length)];
+        result.redacted.push(pick[0]);
+        result.strain = Math.max(0, (result.strain || 0) - 15);
+        saveProgress(true); renderHub();
+        document.getElementById("corruptStatus").textContent = "Field redacted. Strain vented to " + result.strain + "%.";
+      });
+      document.getElementById("transitBtn").addEventListener("click", function () {
+        if (!result) return;
+        var cmd = ">> INITIATE TRANSIT PROTOCOL: ELDORA // OPERATIVE " + result.serial;
+        var statusEl = document.getElementById("transitStatus");
+        function done(ok) { statusEl.textContent = ok ? "Transit command copied. Paste it in #terminal-gate." : "Copy failed. The command is: " + cmd; }
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(cmd).then(function () { done(true); }, function () { done(false); }); }
+        else { done(false); }
+      });
       document.getElementById("settingsOverlay").addEventListener("click", function (e) { if (e.target === this) this.hidden = true; });
       document.addEventListener("keydown", function (e) { if (e.key === "Escape") document.getElementById("settingsOverlay").hidden = true; });
 
@@ -1053,7 +1114,7 @@
           "Weight class: " + result.weight,
           "Traits: " + result.traits.join(" · "),
           "Playbook: “" + result.quote + "”",
-          "Starting Strain: 0%",
+          "Strain: " + (result.strain || 0) + "% · " + strainBand(result.strain || 0),
           "Ledger: 0W–0L–0D",
           "Kit: No kit issued yet"
         ].join("\n");
@@ -1154,6 +1215,17 @@
         <button class="secondary" id="svgBtn" type="button">Download SVG</button>
         <button class="secondary" id="textBtn" type="button">Text dossier</button>
         <div class="status" id="downloadStatus" role="status"></div>
+      </div>
+      <div class="settings-group">
+        <h3>Glitch</h3>
+        <button class="secondary" id="corruptBtn" type="button">Corrupt card</button>
+        <div class="status" id="corruptStatus" role="status"></div>
+      </div>
+      <div class="settings-group">
+        <h3>W.A.R.L.O.K.K.</h3>
+        <button class="secondary" id="transitBtn" type="button">Copy transit command</button>
+        <div><a class="textlink" href="https://discord.gg/9KTgtNH8M" target="_blank" rel="noopener">Join the W.A.R.L.O.K.K. server</a></div>
+        <div class="status" id="transitStatus" role="status"></div>
       </div>
     </div>
   </div>
