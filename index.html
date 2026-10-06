@@ -184,9 +184,9 @@
     .dot.on { background:#d5b870; border-color:#d5b870; }
     .dotlabel { font:800 9px/1.4 ui-monospace,monospace; letter-spacing:.22em; color:var(--ivory-dim); }
     .idcard { display:none; }
-    @media (orientation: landscape) {
-      #panel-card .face { display:none; }
-      .idcard { display:block; background:#e9e6da; color:#141414; padding:20px 24px 14px; position:relative; overflow:hidden; max-width:740px;
+    #panel-card.show-id .face { display:none; }
+    #panel-card.show-id .idcard { display:block; }
+    .idcard { display:none; background:#e9e6da; color:#141414; padding:20px 24px 14px; position:relative; overflow:hidden; max-width:740px;
         background-image:radial-gradient(rgba(0,0,0,.05) 1px, transparent 1px); background-size:9px 9px; }
       .idcard:before { content:""; position:absolute; inset:8px; border:2px solid #141414; pointer-events:none; }
       .id-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #141414; padding-bottom:8px; margin-bottom:12px; position:relative; }
@@ -220,7 +220,6 @@
         .id-head h3 { font-size:20px; }
         .stamp { width:48px; height:48px; }
       }
-    }
     .question-wrap { max-width: 770px; }
     .section-label { margin: 4px 0 10px; color: var(--gold-bright); text-transform: uppercase; letter-spacing: .17em; font-size: 11px; font-weight: 900; }
     .canon-note { margin: 0 0 24px; color: var(--ivory-dim); font: 750 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; }
@@ -557,7 +556,10 @@
             <button class="secondary" id="restartBtn" type="button">Retake exam</button>
             <input type="file" id="portraitInput" accept="image/*" class="vh-input" aria-hidden="true" tabindex="-1">
           </div>
-          <button class="textlink" id="portraitRemoveBtn" type="button" hidden>Remove portrait</button>
+          <div>
+            <button class="textlink" id="portraitRemoveBtn" type="button" hidden>Remove portrait</button>
+            <button class="textlink" id="idToggleBtn" type="button" style="margin-left:18px">View ID</button>
+          </div>
           <p class="session-note">Saved on this device. Card files live in Settings.</p>
         </section>
 
@@ -935,6 +937,7 @@
         document.getElementById("facePhoto").classList.toggle("glitched", redacted.length > 0);
         var redactMap = { license:"cardLicense", weight:"cardWeight", alignment:"cardAlignment", path:"cardPath", osr:"cardOSR", traits:"cardTraits", quote:"cardQuote", call:"cardCall" };
         redacted.forEach(function (key) { var el = document.getElementById(redactMap[key]); if (el) el.textContent = "█████"; });
+        renderIdMode();
         document.getElementById("biasProfile").textContent = result.profile;
         document.getElementById("biasAlignment").textContent = result.alignment;
         document.getElementById("biasWeight").textContent = result.weight;
@@ -1091,6 +1094,21 @@
       });
       document.getElementById("settingsBtn").addEventListener("click", function () { document.getElementById("settingsOverlay").hidden = false; });
       document.getElementById("settingsClose").addEventListener("click", function () { document.getElementById("settingsOverlay").hidden = true; });
+      var idOverride = null;
+      var landscapeMQ = window.matchMedia("(orientation: landscape)");
+      function renderIdMode() {
+        var showId = idOverride !== null ? idOverride : landscapeMQ.matches;
+        document.getElementById("panel-card").classList.toggle("show-id", showId);
+        var idBtn = document.getElementById("idToggleBtn");
+        if (idBtn) idBtn.textContent = showId ? "View card" : "View ID";
+      }
+      document.getElementById("idToggleBtn").addEventListener("click", function () {
+        idOverride = !document.getElementById("panel-card").classList.contains("show-id");
+        renderIdMode();
+      });
+      function resetIdAuto() { idOverride = null; renderIdMode(); }
+      if (landscapeMQ.addEventListener) landscapeMQ.addEventListener("change", resetIdAuto);
+      else if (landscapeMQ.addListener) landscapeMQ.addListener(resetIdAuto);
       var REDACTABLE = [["license","cardLicense"],["weight","cardWeight"],["alignment","cardAlignment"],["path","cardPath"],["osr","cardOSR"],["traits","cardTraits"],["quote","cardQuote"],["call","cardCall"]];
       document.getElementById("corruptBtn").addEventListener("click", function () {
         if (!result) return;
