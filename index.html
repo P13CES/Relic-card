@@ -127,6 +127,14 @@
     .rail { border-right: 1px dotted var(--rule); padding-right: 28px; }
     .rail-number { font: 400 clamp(58px, 8vw, 100px)/.84 Georgia, serif; color: var(--gold-bright); }
     .rail-label { margin: 13px 0 20px; color: var(--ivory-dim); text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 900; }
+    .live-preview { margin-top: 24px; padding-top: 18px; border-top: 1px dotted var(--rule); }
+    .lp-label { color: var(--ivory-dim); text-transform: uppercase; letter-spacing: .14em; font-size: 9px; font-weight: 900; margin-bottom: 8px; }
+    .lp-pips { font-size: 14px; letter-spacing: 3px; color: var(--gold-bright); margin-bottom: 12px; }
+    .lp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; }
+    .lp-row > span { color: var(--ivory-dim); text-transform: uppercase; letter-spacing: .12em; font-size: 9px; font-weight: 700; }
+    .lp-row > b { font: 400 15px Georgia, serif; color: var(--ivory); text-align: right; }
+    .lp-row > b.amber { color: var(--gold-bright); }
+    .lp-row > b.crit { color: var(--red); }
     .progress-track { height: 4px; background: var(--rule-soft); }
     .progress-fill { width: 10%; height: 100%; background: var(--gold); transition: width .2s ease; }
     .candidate-mini { margin-top: 30px; color: var(--ivory-dim); font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
@@ -476,6 +484,13 @@
             <div class="rail-label"><span id="questionCount">of 10</span><br />canon station</div>
             <div class="progress-track" aria-label="Examination progress"><div class="progress-fill" id="progressFill"></div></div>
             <div class="candidate-mini">Candidate<br /><strong id="candidateMini"></strong><br /><span id="callSignMini"></span></div>
+            <div class="live-preview" id="livePreview" aria-live="polite">
+              <div class="lp-label">Card so far</div>
+              <div class="lp-pips" id="lpPips">○○○○○○○○○○</div>
+              <div class="lp-row"><span>Strain</span><b id="lpStrain">0% · Safe</b></div>
+              <div class="lp-row"><span>Lean</span><b id="lpLean">Unwritten</b></div>
+              <div class="lp-row"><span>Trait</span><b id="lpTrait">—</b></div>
+            </div>
             <span id="saveNote" aria-live="polite"></span>
           </aside>
           <div class="question-wrap">
@@ -487,6 +502,7 @@
             <div class="exam-actions">
               <button class="secondary" id="backBtn" type="button">Back</button>
               <button class="textlink" id="refuseBtn" type="button">Refuse this station</button>
+              <button class="die-button" id="rollBtn" type="button" title="Let the dice choose this station's answer">Roll d3</button>
               <button class="primary" id="nextBtn" type="button" disabled>Next station</button>
             </div>
           </div>
@@ -837,6 +853,7 @@
         backBtn.disabled = current === 0;
         nextBtn.disabled = picks[current] === null;
         nextBtn.textContent = current === 9 ? "Issue my card" : "Next station";
+        renderLivePreview();
       }
 
       function choose(index) {
@@ -849,7 +866,44 @@
         renderQuestion();
         saveProgress(false);
       }
+      function rollStation() {
+        choose(roll(3) - 1);
+      }
       document.getElementById("refuseBtn").addEventListener("click", toggleRefuse);
+      document.getElementById("rollBtn").addEventListener("click", rollStation);
+
+      function renderLivePreview() {
+        var el = document.getElementById("livePreview");
+        if (!el) return;
+        var pips = "", a = 0, r = 0, totals = [0,0,0], lastTrait = null;
+        for (var i = 0; i < questions.length; i++) {
+          var p = picks[i];
+          if (p === -1) { pips += "✕"; r++; }
+          else if (p === null) { pips += "○"; }
+          else {
+            pips += "●"; a++;
+            var ans = questions[i].answers[p];
+            totals[0] += ans.score[0]; totals[1] += ans.score[1]; totals[2] += ans.score[2];
+            lastTrait = ans.trait;
+          }
+        }
+        var strain = Math.max(0, Math.min(100, a * 8 - r * 10));
+        var names = ["Power","Spell","Motion"];
+        var lean;
+        if (a === 0 && r === 0) { lean = "Unwritten"; }
+        else if (r >= 3) { lean = "Unregistered path"; }
+        else {
+          var pct = totals.map(function (raw) { return Math.max(25, Math.min(100, Math.round(25 + (raw / 30) * 75))); });
+          var sorted = [0,1,2].sort(function (x, y) { return pct[y] - pct[x] || x - y; });
+          lean = (pct[sorted[0]] - pct[sorted[2]] <= 8) ? "Triune lean" : names[sorted[0]] + " lean";
+        }
+        document.getElementById("lpPips").textContent = pips;
+        var sEl = document.getElementById("lpStrain");
+        sEl.textContent = strain + "% · " + strainBand(strain);
+        sEl.className = strain >= 80 ? "crit" : strain >= 60 ? "amber" : "";
+        document.getElementById("lpLean").textContent = lean;
+        document.getElementById("lpTrait").textContent = lastTrait || "—";
+      }
 
       backBtn.addEventListener("click", function () { if (current > 0) { current -= 1; renderQuestion(); saveProgress(false); } });
       nextBtn.addEventListener("click", function () {
@@ -862,6 +916,7 @@
         if (examView.hidden) return;
         if (["1","2","3"].indexOf(event.key) !== -1) choose(Number(event.key) - 1);
         if (event.key === "r" || event.key === "R") toggleRefuse();
+        if (event.key === "d" || event.key === "D") rollStation();
         if (event.key === "Enter" && !nextBtn.disabled) { event.preventDefault(); nextBtn.click(); }
       });
 
