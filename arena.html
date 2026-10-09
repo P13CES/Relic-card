@@ -308,6 +308,7 @@
 
         const LOADOUTS = {
             cinderkin: {
+                portrait: "arena-portraits/cinderkin.webp",
                 name: "Cinderkin",
                 flavor: "Ashweight brawler of Ashden's ash-choked winds.",
                 weight: "Ashweight",
@@ -322,6 +323,7 @@
                 relic: { name: "Heart of the Forge", desc: "Vent 20% Strain and next spell deals +3 bonus damage." }
             },
             inkslinger: {
+                portrait: "arena-portraits/inkslinger.webp",
                 name: "Ink Slinger",
                 flavor: "Ironweight duelist who writes in Red Ink.",
                 weight: "Ironweight",
@@ -336,6 +338,7 @@
                 relic: { name: "Thought Siphon", desc: "Siphons thoughts the way Memory Wells do. Deal 3 damage, Vent 10% Strain, +5% target Strain." }
             },
             tollkeeper: {
+                portrait: "arena-portraits/tollkeeper.webp",
                 name: "Tollkeeper",
                 flavor: "Emberweight keeper of Bluewall's bells.",
                 weight: "Emberweight",
@@ -350,6 +353,7 @@
                 relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
             },
             kingsecho: {
+                portrait: "arena-portraits/kingsecho.webp",
                 name: "King's Echo",
                 flavor: "Wyrmweight echo of Bluewall's sorcerer-kings.",
                 weight: "Wyrmweight",
@@ -364,6 +368,7 @@
                 relic: { name: "Shadow-Needle", desc: "Deal 2 damage and suppress enemy Relic for 1 tick." }
             },
             ringfactor: {
+                portrait: "arena-portraits/ringfactor.webp",
                 name: "Ring Factor",
                 flavor: "Ironweight factor of the Eight Rings Trading Company.",
                 weight: "Ironweight",
@@ -378,6 +383,7 @@
                 relic: { name: "Guild Seal", desc: "Gain 4 Temp HP and 2 AN." }
             },
             proxy: {
+                portrait: "arena-portraits/proxy.webp",
                 name: "Proxy",
                 flavor: "Emberweight proxy of Palin's board-senate.",
                 weight: "Emberweight",
@@ -392,6 +398,7 @@
                 relic: { name: "Tabula Rasa", desc: "If your Strain is above 40%, reduce it to 40%." }
             },
             gavelbearer: {
+                portrait: "arena-portraits/gavelbearer.webp",
                 name: "Gavelbearer",
                 flavor: "Sovereignweight bearer of the Obsidian Gavel.",
                 weight: "Sovereignweight",
@@ -406,6 +413,7 @@
                 relic: { name: "Hollow Crown", desc: "Target gains +10% Strain. You Vent 10% Strain." }
             },
             gargoyle: {
+                portrait: "arena-portraits/gargoyle.webp",
                 name: "Gargoyle",
                 flavor: "Ashweight gargoyle of congealed light.",
                 weight: "Ashweight",
@@ -481,6 +489,7 @@
 
                 card.innerHTML = `
                     <div>
+                        <img src="${l.portrait}" alt="${l.name} portrait" class="w-full h-44 object-cover object-top rounded-lg mb-2 border border-slate-800" loading="lazy">
                         <div class="flex justify-between items-center mb-1">
                             <h3 class="font-cinzel text-base font-bold text-amber-300 group-hover:text-amber-400">${l.name}</h3>
                             <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${WEIGHT_STYLES[l.weight]}">${l.weight}</span>
