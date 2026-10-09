@@ -110,10 +110,10 @@
         </div>
     </header>
 
-    <main class="max-w-6xl w-full mx-auto p-4 flex-1 flex flex-col gap-5">
+    <main class="max-w-6xl w-full mx-auto p-4 flex-1 flex flex-col gap-5 lg:grid lg:grid-cols-3 lg:items-start">
 
         <!-- 8x8 Arena Grid -->
-        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur">
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur order-1 lg:order-none lg:col-span-3">
             <div class="flex items-center justify-between mb-3 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                 <span><i class="fa-solid fa-location-dot text-amber-500"></i> Arena Grid (8x8)</span>
                 <span id="range-indicator" class="text-amber-400 font-mono">Distance: 5 Squares</span>
@@ -126,7 +126,7 @@
             <p id="move-hint" class="hidden text-center text-xs text-cyan-300 font-mono mt-2">Move mode: click a glowing square to move there (1 AP)</p>
         </section>
 
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-5 order-3 lg:order-none lg:col-span-3">
 
             <!-- PLAYER CARD -->
             <div id="player-card" class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 relative transition-all duration-300">
@@ -238,7 +238,7 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-5 order-2 lg:order-none lg:col-span-3">
 
             <!-- Tactical Command Panel (2 AP Economy) -->
             <div class="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl">
