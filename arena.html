@@ -290,7 +290,7 @@
                                     <span id="spell-1-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
                                 </div>
                             </div>
-                            <p id="spell-1-desc" class="text-[11px] text-slate-400 leading-snug">Deal 4 damage (Range 1-3). If target Strain is 60% or more, deal 7 instead.</p>
+                            <p id="spell-1-desc" class="text-[11px] text-slate-400 leading-snug">Deal 4 damage (Range 1-3). If target Strain is 40% or more, deal 7 instead.</p>
                         </div>
                         <button id="btn-spell-1" onclick="playerAction('spell', 0)" class="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-hand-sparkles"></i> Cast Spell 1
@@ -476,7 +476,7 @@
                 maxHp: 25,
                 spells: [
                     { name: "Flame-Jab", cost: 1, minRng: 1, maxRng: 2, desc: "Deal 5 Fire damage." },
-                    { name: "Pyre-Haymaker", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 14 Fire damage. Take +20% Strain yourself." }
+                    { name: "Pyre-Haymaker", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 10 Fire damage. Take +20% Strain yourself." }
                 ],
                 relic: { name: "Heart of the Forge", desc: "Vent 20% Strain and next spell deals +3 bonus damage." }
             },
@@ -488,7 +488,7 @@
                 affinity: 6,
                 maxHp: 25,
                 spells: [
-                    { name: "Apexite Shard", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 4 damage. Deals 7 damage if target Strain is 60% or more." },
+                    { name: "Apexite Shard", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 4 damage. Deals 7 damage if target Strain is 40% or more." },
                     { name: "Red Ink", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 3 damage. Target gains +5% Strain." }
                 ],
                 relic: { name: "Shadow-Needle", desc: "Deal 2 damage and suppress enemy Relic for 1 tick." }
@@ -502,7 +502,7 @@
                 maxHp: 25,
                 spells: [
                     { name: "AN Paper Burn", cost: 0, minRng: 0, maxRng: 0, desc: "Gain +1 AN instantly and Vent 5% Strain." },
-                    { name: "Bell Ringer's Toll", cost: 2, minRng: 1, maxRng: 2, desc: "Deal 3 damage (5 if target cast a spell last tick)." }
+                    { name: "Bell Ringer's Toll", cost: 2, minRng: 1, maxRng: 2, desc: "Deal 4 damage (6 if target cast a spell last tick)." }
                 ],
                 relic: { name: "Thought Siphon", desc: "Deal 3 damage, Vent 10% Strain, +5% target Strain." }
             },
@@ -514,7 +514,7 @@
                 affinity: 3,
                 maxHp: 25,
                 spells: [
-                    { name: "Calcified Bastion", cost: 1, minRng: 0, maxRng: 0, desc: "Gain 4 Temp HP. Gain 8 Temp HP if your Strain is 60% or more." },
+                    { name: "Calcified Bastion", cost: 1, minRng: 0, maxRng: 0, desc: "Gain 4 Temp HP. Gain 8 Temp HP if your Strain is 40% or more." },
                     { name: "Maw of Consumption", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 6 damage. Gain Temp HP equal to half damage dealt." }
                 ],
                 relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
@@ -555,7 +555,7 @@
         /* AI only bothers with a self-cast when it does something useful */
         function selfSpellUseful(spell, f) {
             if (spell.name === "Calcified Bastion") {
-                return f.hp < f.maxHp || f.strain >= 60 || f.tempHp <= 0;
+                return f.hp < f.maxHp || f.strain >= 40 || f.tempHp <= 0;
             }
             if (spell.name === "AN Paper Burn") {
                 return f.an < 2 || f.strain > 0;
@@ -932,7 +932,7 @@
             let dmg = 0;
 
             if (spell.name === "Apexite Shard") {
-                dmg = (target.strain >= 60) ? 7 : 4;
+                dmg = (target.strain >= 40) ? 7 : 4;
                 spellDamage(caster, target, dmg, casterType);
             } else if (spell.name === "Red Ink") {
                 dmg = 3;
@@ -940,7 +940,7 @@
                 spellDamage(caster, target, dmg, casterType);
                 logMessage(casterType, `Red Ink forced +5% Strain onto target!`);
             } else if (spell.name === "Calcified Bastion") {
-                const tempAmount = (caster.strain >= 60) ? 8 : 4;
+                const tempAmount = (caster.strain >= 40) ? 8 : 4;
                 caster.tempHp += tempAmount;
                 logMessage(casterType, `Calcified Bastion granted +${tempAmount} Temp HP!`);
             } else if (spell.name === "Maw of Consumption") {
@@ -953,7 +953,7 @@
                 dmg = 5;
                 spellDamage(caster, target, dmg, casterType);
             } else if (spell.name === "Pyre-Haymaker") {
-                dmg = 14;
+                dmg = 10;
                 caster.strain += 20;
                 spellDamage(caster, target, dmg, casterType);
                 logMessage(casterType, `Pyre-Haymaker generated +20% Strain on caster!`);
@@ -963,7 +963,7 @@
                 logMessage(casterType, `Burned AN paper: +1 AN gained, -5% Strain vented!`);
             } else if (spell.name === "Bell Ringer's Toll") {
                 const oppPrevCast = casterType === 'player' ? gameState.prevCast.enemy : gameState.prevCast.player;
-                dmg = oppPrevCast ? 5 : 3;
+                dmg = oppPrevCast ? 6 : 4;
                 spellDamage(caster, target, dmg, casterType);
             }
         }
