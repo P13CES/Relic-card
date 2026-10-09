@@ -642,8 +642,9 @@
             document.getElementById('combat-log').innerHTML = '';
             logMessage('system', 'Match Commenced! Tick 1 Channel Phase: AN regenerated.');
 
-            // Higher Affinity Index acts first
+            // Higher Affinity Index acts first on tick 1; first activation alternates each tick after that
             gameState.activeTurn = (gameState.player.affinity >= gameState.enemy.affinity) ? 'player' : 'enemy';
+            gameState.prevFirst = gameState.activeTurn;
 
             updateUI();
 
@@ -1208,7 +1209,10 @@
 
             logMessage('system', `--- TICK ${gameState.tick} CHANNEL PHASE --- both fighters gain AN!`);
 
-            gameState.activeTurn = (p.affinity >= e.affinity) ? 'player' : 'enemy';
+            // First activation alternates each tick (tick 1 was decided by affinity)
+            gameState.activeTurn = (gameState.prevFirst === 'player') ? 'enemy' : 'player';
+            gameState.prevFirst = gameState.activeTurn;
+            logMessage('system', `${gameState.activeTurn === 'player' ? 'You activate' : 'The opponent activates'} first this tick.`);
 
             if (gameState.activeTurn === 'enemy') {
                 setTimeout(executeAITurn, 800);
