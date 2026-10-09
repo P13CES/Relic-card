@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Arena One-Screen Mockups</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap" rel="stylesheet" />
+<style>
+  .font-cinzel { font-family: 'Cinzel', Georgia, serif; }
+  .mock-tab-active { background: #f59e0b; color: #020617; }
+  .subtab-active { background: #334155; color: #fcd34d; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+<div class="max-w-[480px] mx-auto p-3 flex flex-col gap-3 pb-10">
+
+  <div>
+    <h1 class="font-cinzel text-xl font-extrabold text-amber-400 tracking-wide">One-Screen Mockups</h1>
+    <p class="text-xs text-slate-400 mt-1">Three ways to fit a whole bout on one phone screen, no page scroll. Static mockups: buttons don't act.</p>
+  </div>
+
+  <div class="grid grid-cols-3 gap-2">
+    <button onclick="showMock('a')" id="mocktab-a" class="mock-tab-active py-2 rounded-lg text-xs font-bold border border-slate-700 transition">A · Compact</button>
+    <button onclick="showMock('b')" id="mocktab-b" class="py-2 rounded-lg text-xs font-bold border border-slate-700 text-slate-300 transition">B · Tabs</button>
+    <button onclick="showMock('c')" id="mocktab-c" class="py-2 rounded-lg text-xs font-bold border border-slate-700 text-slate-300 transition">C · Overlay</button>
+  </div>
+
+  <!-- ============ MOCK A: COMPACT STACK ============ -->
+  <div id="mock-a" class="border border-slate-700 rounded-2xl overflow-hidden bg-slate-900/40">
+    <div class="p-2.5 flex flex-col gap-2">
+      <p class="text-[10px] font-mono text-slate-500">A · COMPACT STACK — everything shrunk into one column</p>
+
+      <!-- slim header -->
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5">
+        <span class="font-cinzel text-[11px] font-bold text-amber-400 tracking-wider">TICK 2/6</span>
+        <span class="text-[10px] font-mono text-slate-400"><i class="fa-solid fa-scale-balanced text-amber-500"></i> Watch</span>
+        <span class="text-[10px] font-mono text-slate-400">Dist: 2</span>
+        <i class="fa-solid fa-rotate-right text-slate-500 text-[11px]"></i>
+      </div>
+
+      <!-- dual fighter strip -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-slate-900 border border-cyan-800/50 rounded-lg p-1.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-bold text-cyan-300">YOU · Stalker</span>
+            <span class="text-[9px] font-mono text-slate-400">●●●</span>
+          </div>
+          <div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:100%"></div></div>
+          <div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:10%"></div></div>
+          <div class="flex justify-between text-[8px] font-mono text-slate-500 mt-0.5"><span>25/25</span><span>Str 10%</span></div>
+        </div>
+        <div class="bg-slate-900 border border-rose-900/50 rounded-lg p-1.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-bold text-rose-300">FOE · Knight</span>
+            <span class="text-[9px] font-mono text-slate-400">●●●●</span>
+          </div>
+          <div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:76%"></div></div>
+          <div class="h-1.5 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:25%"></div></div>
+          <div class="flex justify-between text-[8px] font-mono text-slate-500 mt-0.5"><span>19/25</span><span>Str 25%</span></div>
+        </div>
+      </div>
+
+      <!-- compact grid -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2">
+        <div id="grid-a" class="grid grid-cols-8 gap-1 max-w-[320px] mx-auto"></div>
+        <p class="text-center text-[9px] text-slate-500 font-mono mt-1">Tap your fighter to move</p>
+      </div>
+
+      <!-- 2x2 tiles, slim -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-slate-950/80 border border-amber-500/30 rounded-lg p-2 min-h-[64px]">
+          <div class="text-[11px] font-bold text-amber-300 font-cinzel">Apexite Shard</div>
+          <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+        </div>
+        <div class="bg-slate-950/80 border border-amber-500/30 rounded-lg p-2 min-h-[64px]">
+          <div class="text-[11px] font-bold text-amber-300 font-cinzel">Red Ink</div>
+          <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+        </div>
+        <div class="bg-cyan-950/40 border border-cyan-800/60 rounded-lg p-2 min-h-[52px] flex items-center justify-center gap-2">
+          <span class="text-cyan-300 text-xs font-bold"><i class="fa-solid fa-wind"></i> Vent</span>
+          <span class="text-[8px] text-cyan-500/80 font-mono">1 AP</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2 min-h-[52px] flex items-center justify-center gap-2">
+          <span class="text-slate-200 text-xs font-bold"><i class="fa-solid fa-forward-step"></i> Pass</span>
+        </div>
+      </div>
+
+      <div class="bg-purple-950/60 border border-purple-700/60 rounded-lg py-1.5 text-center text-[10px] font-bold text-purple-300">
+        <i class="fa-solid fa-gem text-purple-400"></i> Relic: Shadow-Needle <span class="text-[8px] bg-purple-900/80 px-1 py-px rounded text-purple-200 ml-1">FREE 1x</span>
+      </div>
+
+      <!-- log ticker -->
+      <div class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-[10px] font-mono text-slate-400 truncate">
+        <span class="text-amber-500">[T2]</span> <span class="text-cyan-300">You cast Apexite Shard!</span> Dealt 4 damage.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MOCK B: TABS ============ -->
+  <div id="mock-b" class="hidden border border-slate-700 rounded-2xl overflow-hidden bg-slate-900/40">
+    <div class="p-2.5 flex flex-col gap-2">
+      <p class="text-[10px] font-mono text-slate-500">B · TABS — grid always visible, bottom panel swaps</p>
+
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5">
+        <span class="font-cinzel text-[11px] font-bold text-amber-400 tracking-wider">TICK 2/6</span>
+        <span class="text-[10px] font-mono text-slate-400">Dist: 2</span>
+        <span class="text-[10px] font-mono text-amber-400 font-bold">Your Turn · 2 AP</span>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2">
+        <div id="grid-b" class="grid grid-cols-8 gap-1 max-w-[340px] mx-auto"></div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
+        <button onclick="showSubtab('spells')" id="subtab-spells" class="subtab-active py-1.5 rounded-md text-[11px] font-bold transition">Spells</button>
+        <button onclick="showSubtab('status')" id="subtab-status" class="py-1.5 rounded-md text-[11px] font-bold text-slate-400 transition">Status</button>
+        <button onclick="showSubtab('log')" id="subtab-log" class="py-1.5 rounded-md text-[11px] font-bold text-slate-400 transition">Log</button>
+      </div>
+
+      <div id="subtab-panel-spells" class="grid grid-cols-2 gap-2">
+        <div class="bg-slate-950/80 border border-amber-500/30 rounded-lg p-2 min-h-[72px]">
+          <div class="text-[11px] font-bold text-amber-300 font-cinzel">Apexite Shard</div>
+          <div class="text-[9px] text-slate-500 leading-tight mt-0.5">4 dmg · 7 if foe ≥40% strain</div>
+          <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+        </div>
+        <div class="bg-slate-950/80 border border-amber-500/30 rounded-lg p-2 min-h-[72px]">
+          <div class="text-[11px] font-bold text-amber-300 font-cinzel">Red Ink</div>
+          <div class="text-[9px] text-slate-500 leading-tight mt-0.5">3 dmg · foe +5% strain</div>
+          <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+        </div>
+        <div class="bg-cyan-950/40 border border-cyan-800/60 rounded-lg p-2 min-h-[56px] flex items-center justify-center gap-2">
+          <span class="text-cyan-300 text-xs font-bold"><i class="fa-solid fa-wind"></i> Vent</span><span class="text-[8px] text-cyan-500/80 font-mono">1 AP</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-2 min-h-[56px] flex items-center justify-center gap-2">
+          <span class="text-slate-200 text-xs font-bold"><i class="fa-solid fa-forward-step"></i> Pass</span>
+        </div>
+        <div class="col-span-2 bg-purple-950/60 border border-purple-700/60 rounded-lg py-1.5 text-center text-[10px] font-bold text-purple-300">
+          <i class="fa-solid fa-gem text-purple-400"></i> Relic: Shadow-Needle <span class="text-[8px] bg-purple-900/80 px-1 py-px rounded text-purple-200 ml-1">FREE 1x</span>
+        </div>
+      </div>
+
+      <div id="subtab-panel-status" class="hidden flex-col gap-2">
+        <div class="bg-slate-900 border border-cyan-800/50 rounded-lg p-2">
+          <div class="flex justify-between text-[11px]"><span class="font-bold text-cyan-300">YOU · Strand-Stalker</span><span class="font-mono text-slate-400">Spd 3 · Aff 6 · AN ●●●</span></div>
+          <div class="h-2 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:100%"></div></div>
+          <div class="h-2 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:10%"></div></div>
+          <div class="flex justify-between text-[9px] font-mono text-slate-500 mt-0.5"><span>HP 25/25</span><span>Strain 10%</span></div>
+        </div>
+        <div class="bg-slate-900 border border-rose-900/50 rounded-lg p-2">
+          <div class="flex justify-between text-[11px]"><span class="font-bold text-rose-300">FOE · Mirror-Knight</span><span class="font-mono text-slate-400">Spd 2 · Aff 3 · AN ●●●●</span></div>
+          <div class="h-2 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:76%"></div></div>
+          <div class="h-2 bg-slate-950 rounded-full mt-1 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:25%"></div></div>
+          <div class="flex justify-between text-[9px] font-mono text-slate-500 mt-0.5"><span>HP 19/25</span><span>Strain 25%</span></div>
+        </div>
+      </div>
+
+      <div id="subtab-panel-log" class="hidden bg-slate-950 border border-slate-800 rounded-lg p-2 h-[172px] overflow-y-auto font-mono text-[10px] space-y-1">
+        <div><span class="text-amber-500">[T2]</span> <span class="text-cyan-300">You cast Apexite Shard!</span> <span class="text-slate-400">Dealt 4 damage.</span></div>
+        <div><span class="text-amber-500">[T2]</span> <span class="text-slate-400">--- TICK 2 CHANNEL PHASE --- both fighters gain AN!</span></div>
+        <div><span class="text-amber-500">[T2]</span> <span class="text-slate-400">You activate first this tick.</span></div>
+        <div><span class="text-amber-500">[T1]</span> <span class="text-rose-300">Enemy cast Calcified Bastion!</span> <span class="text-slate-400">+4 Temp HP.</span></div>
+        <div><span class="text-amber-500">[T1]</span> <span class="text-cyan-300">Counter cast: Red Ink!</span> <span class="text-slate-400">Dealt 3 damage.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MOCK C: OVERLAY HUD ============ -->
+  <div id="mock-c" class="hidden border border-slate-700 rounded-2xl overflow-hidden bg-slate-900/40">
+    <div class="p-2.5 flex flex-col gap-2">
+      <p class="text-[10px] font-mono text-slate-500">C · OVERLAY HUD — grid fills the screen, controls float on top</p>
+
+      <div class="relative rounded-xl overflow-hidden border border-slate-700" style="height: 560px;">
+        <div class="absolute inset-0 p-2 bg-slate-950">
+          <div id="grid-c" class="grid grid-cols-8 gap-1 h-full"></div>
+        </div>
+
+        <!-- top HUD -->
+        <div class="absolute top-0 left-0 right-0 bg-gradient-to-b from-slate-950 via-slate-950/85 to-transparent px-2 pt-2 pb-5">
+          <div class="flex items-center justify-between text-[10px] font-mono">
+            <span class="font-cinzel text-amber-400 font-bold tracking-wider">TICK 2/6</span>
+            <span class="text-slate-400">Dist: 2</span>
+            <span class="text-amber-400 font-bold">Your Turn</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-1.5">
+            <div>
+              <div class="text-[8px] font-bold text-cyan-300 font-mono">YOU 25/25</div>
+              <div class="h-1.5 bg-slate-900/90 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:100%"></div></div>
+              <div class="h-1 bg-slate-900/90 rounded-full mt-0.5 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:10%"></div></div>
+            </div>
+            <div>
+              <div class="text-[8px] font-bold text-rose-300 font-mono text-right">FOE 19/25</div>
+              <div class="h-1.5 bg-slate-900/90 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:76%"></div></div>
+              <div class="h-1 bg-slate-900/90 rounded-full mt-0.5 overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width:25%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- toast -->
+        <div class="absolute left-2 right-2 top-[86px] bg-slate-900/85 backdrop-blur border border-slate-700 rounded-lg px-2 py-1 text-[10px] font-mono text-slate-300 truncate">
+          <span class="text-amber-500">[T2]</span> <span class="text-cyan-300">You cast Apexite Shard!</span>
+        </div>
+
+        <!-- bottom action dock -->
+        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-2 pt-6 pb-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-slate-900/85 backdrop-blur border border-amber-500/40 rounded-lg p-2">
+              <div class="text-[11px] font-bold text-amber-300 font-cinzel">Apexite Shard</div>
+              <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+            </div>
+            <div class="bg-slate-900/85 backdrop-blur border border-amber-500/40 rounded-lg p-2">
+              <div class="text-[11px] font-bold text-amber-300 font-cinzel">Red Ink</div>
+              <div class="flex gap-1 text-[8px] font-mono mt-1"><span class="bg-slate-800 px-1 py-px rounded text-amber-400">1 AP</span><span class="bg-slate-800 px-1 py-px rounded text-cyan-400">2 AN</span></div>
+            </div>
+            <div class="bg-slate-900/85 backdrop-blur border border-cyan-800/60 rounded-lg p-2 flex items-center justify-center gap-2">
+              <span class="text-cyan-300 text-xs font-bold"><i class="fa-solid fa-wind"></i> Vent</span>
+            </div>
+            <div class="bg-slate-900/85 backdrop-blur border border-slate-700 rounded-lg p-2 flex items-center justify-center gap-2">
+              <span class="text-slate-200 text-xs font-bold"><i class="fa-solid fa-forward-step"></i> Pass</span>
+            </div>
+          </div>
+          <div class="mt-1.5 text-center text-[9px] font-bold text-purple-300 font-mono"><i class="fa-solid fa-gem text-purple-400"></i> Relic ready</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-[11px] text-slate-500 leading-relaxed">Tap A / B / C up top to flip between them. Tell me which direction (or what mix) and I'll rebuild the real arena to match.</p>
+</div>
+
+<script>
+  function showMock(which) {
+    ['a','b','c'].forEach(m => {
+      document.getElementById('mock-' + m).classList.toggle('hidden', m !== which);
+      const tab = document.getElementById('mocktab-' + m);
+      tab.classList.toggle('mock-tab-active', m === which);
+      tab.classList.toggle('text-slate-300', m !== which);
+    });
+  }
+  function showSubtab(which) {
+    ['spells','status','log'].forEach(t => {
+      const panel = document.getElementById('subtab-panel-' + t);
+      const isTarget = t === which;
+      panel.classList.toggle('hidden', !isTarget);
+      panel.classList.toggle('flex', isTarget && t === 'status');
+      const tab = document.getElementById('subtab-' + t);
+      tab.classList.toggle('subtab-active', isTarget);
+      tab.classList.toggle('text-slate-400', !isTarget);
+    });
+  }
+  function buildGrid(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    for (let y = 8; y >= 1; y--) for (let x = 1; x <= 8; x++) {
+      const c = document.createElement('div');
+      c.className = 'rounded-[3px] border border-slate-800/80 bg-slate-950/70 aspect-square flex items-center justify-center';
+      if (x === 4 && y === 4) c.innerHTML = '<div class="w-3/5 h-3/5 rounded-[3px] bg-cyan-500/30 border border-cyan-400"></div>';
+      if (x === 4 && y === 6) c.innerHTML = '<div class="w-3/5 h-3/5 rounded-[3px] bg-rose-500/30 border border-rose-400"></div>';
+      el.appendChild(c);
+    }
+  }
+  buildGrid('grid-a'); buildGrid('grid-b'); buildGrid('grid-c');
+</script>
+</body>
+</html>
