@@ -747,7 +747,16 @@
                     gameState.lastCast.player = true;
                     playSound('cast');
                     logMessage('player', `Cast ${spell.name}!`);
-                    executeSpellEffect(spell, p, e, 'player');
+                    // The enemy may answer with Borrowed Time before your spell resolves
+                    aiBorrowCheck(() => {
+                        if (!gameState.isMatchOver) {
+                            executeSpellEffect(spell, p, e, 'player');
+                        }
+                        checkMatchStatus();
+                        updateUI();
+                        maybeEndPlayerActivation();
+                    });
+                    return;
                 }
             } else if (actionType === 'pass') {
                 moveMode = false;
@@ -997,6 +1006,32 @@
             }
         }
 
+        /* The AI answers the player's hostile casts with Borrowed Time (ruled 2026-10-09).
+           30% base chance, 70% when bloodied (hp <= 10). Costs 1 AP of its next activation. */
+        function aiBorrowCheck(done) {
+            const e = gameState.enemy;
+            const p = gameState.player;
+            if (gameState.isMatchOver || e.borrowedDebt >= 2) { done(); return; }
+            const counters = e.spells.filter(s => !isSelfSpell(s) && e.strain + Math.max(0, s.cost - e.an) * 10 < 100);
+            if (counters.length === 0) { done(); return; }
+            const chance = (e.hp <= 10) ? 0.7 : 0.3;
+            if (Math.random() >= chance) { done(); return; }
+            const counter = counters[Math.floor(Math.random() * counters.length)];
+            payAn(e, counter.cost, 'enemy');
+            if (gameState.tick >= 6) {
+                e.strain += 10;
+                logMessage('enemy', `Enemy borrows time on the final tick (debt burns as +10% Strain) and counter-casts ${counter.name}!`);
+            } else {
+                e.borrowedDebt += 1;
+                logMessage('enemy', `Enemy borrows time! It spends 1 AP from its next activation to counter-cast ${counter.name}.`);
+            }
+            playSound('cast');
+            executeSpellEffect(counter, e, p, 'enemy');
+            checkMatchStatus();
+            updateUI();
+            done();
+        }
+
         function endAITurn() {
             checkMatchStatus();
             if (!gameState.isMatchOver) {
@@ -1097,7 +1132,11 @@
             p.relicSuppressed = false;
 
             gainAn(e, e.anPerTick);
-            e.ap = 2;
+            e.ap = Math.max(0, 2 - e.borrowedDebt);
+            if (e.borrowedDebt > 0) {
+                logMessage('system', `Enemy's borrowed time debt collected: it starts this activation with ${e.ap} AP.`);
+            }
+            e.borrowedDebt = 0;
             e.relicSuppressed = false;
 
             logMessage('system', `--- TICK ${gameState.tick} CHANNEL PHASE --- both fighters gain AN!`);
