@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RANH: Eldora Tactical Duel Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090a0f;
+            color: #e2e8f0;
+            user-select: none;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Amber Fissure Glow Effects */
+        .amber-glow {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5), inset 0 0 10px rgba(245, 158, 11, 0.3);
+            border-color: #f59e0b !important;
+        }
+        .amber-text-glow {
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+        }
+        .calcified-glow {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.7), inset 0 0 15px rgba(239, 68, 68, 0.5);
+            border-color: #ef4444 !important;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Pulse Animations */
+        @keyframes amberPulse {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px #f59e0b); }
+            50% { opacity: 0.6; filter: drop-shadow(0 0 2px #f59e0b); }
+        }
+        .animate-amber {
+            animation: amberPulse 2s infinite ease-in-out;
+        }
+
+        .arena-cell {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .move-target {
+            cursor: pointer;
+            border-color: #22d3ee !important;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.45), inset 0 0 8px rgba(34, 211, 238, 0.25);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden bg-slate-950 text-slate-100">
+
+    <!-- Top Header / Watch Status Bar -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 py-3 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-xl font-cinzel">
+                    R
+                </div>
+                <div>
+                    <h1 class="font-cinzel text-lg font-bold tracking-wider text-amber-400 leading-tight">RANH : DUEL ARENA</h1>
+                    <p class="text-xs text-slate-400">Eldora Blood Sport Protocol • 6 Ticks Limit</p>
+                </div>
+            </div>
+
+            <!-- Tick Clock & The Watch Status -->
+            <div class="flex items-center gap-6">
+                <div class="text-center">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-400">Match Clock</div>
+                    <div class="text-xl font-extrabold font-cinzel text-amber-300 flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-stopwatch text-amber-500 text-sm"></i>
+                        TICK <span id="tick-display">1</span> / 6
+                    </div>
+                </div>
+
+                <div class="h-8 w-px bg-slate-800"></div>
+
+                <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="fa-solid fa-eye text-cyan-400 text-sm animate-pulse"></i>
+                    <div>
+                        <div class="text-[9px] uppercase tracking-wider text-slate-400">The Watch</div>
+                        <div id="watch-status" class="text-xs font-semibold text-cyan-300">Observing Match</div>
+                    </div>
+                </div>
+
+                <button id="btn-reset" onclick="initGame()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded border border-slate-700 transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-rotate-right"></i> Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto p-4 flex-1 flex flex-col gap-5">
+
+        <!-- 8x8 Arena Grid -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden backdrop-blur">
+            <div class="flex items-center justify-between mb-3 text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                <span><i class="fa-solid fa-location-dot text-amber-500"></i> Arena Grid (8x8)</span>
+                <span id="range-indicator" class="text-amber-400 font-mono">Distance: 5 Squares</span>
+            </div>
+
+            <!-- The 8x8 Grid -->
+            <div id="arena-grid" class="grid grid-cols-8 gap-1.5 md:gap-2 my-2 max-w-xl mx-auto">
+                <!-- Dynamically Rendered Cells -->
+            </div>
+            <p id="move-hint" class="hidden text-center text-xs text-cyan-300 font-mono mt-2">Move mode: click a glowing square to move there (1 AP)</p>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <!-- PLAYER CARD -->
+            <div id="player-card" class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 relative transition-all duration-300">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="player-weight-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border">EMBERWEIGHT</span>
+                        <h2 id="player-name" class="font-cinzel text-lg font-bold text-slate-100">Strand-Stalker</h2>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono">
+                        Speed: <span id="player-speed" class="text-slate-200">3</span> | Affinity: <span id="player-affinity" class="text-amber-400">6</span>
+                    </div>
+                </div>
+
+                <!-- HP Bar -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-semibold">
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-heart text-xs"></i> Health Points</span>
+                        <span id="player-hp-text" class="font-mono text-slate-200">25 / 25</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+                        <div id="player-hp-bar" class="h-full bg-emerald-500 transition-all duration-300 rounded-full" style="width: 100%;"></div>
+                        <div id="player-temphp-bar" class="h-full bg-cyan-400/80 absolute top-0 left-0 transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Strain Gauge (0 - 100%) -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-semibold">
+                        <span id="player-strain-label" class="text-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-amber-500"></i> Physical Strain
+                        </span>
+                        <span id="player-strain-text" class="font-mono text-amber-400 font-bold">0% / 100%</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+                        <!-- Amber Threshold Marker at 60% -->
+                        <div class="absolute top-0 bottom-0 left-[60%] w-0.5 bg-amber-500/80 z-10 shadow-[0_0_5px_#f59e0b]"></div>
+                        <div id="player-strain-bar" class="h-full bg-amber-500 transition-all duration-300 rounded-full" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                        <span>0% Clean</span>
+                        <span class="text-amber-500/80 font-bold">60% Amber (Soul-Crack)</span>
+                        <span class="text-rose-500 font-bold">100% Calcified</span>
+                    </div>
+                </div>
+
+                <!-- Energy AN Orbs -->
+                <div class="flex items-center justify-between bg-slate-950/60 px-3 py-2 rounded-lg border border-slate-800/80">
+                    <span class="text-xs text-slate-400 font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-atom text-cyan-400"></i> AN Energy
+                    </span>
+                    <div id="player-an-container" class="flex items-center gap-1.5">
+                        <!-- AN Orbs rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- OPPONENT AI CARD -->
+            <div id="enemy-card" class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 relative transition-all duration-300">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="enemy-weight-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border">WYRMWEIGHT</span>
+                        <h2 id="enemy-name" class="font-cinzel text-lg font-bold text-slate-100">Mirror-Knight</h2>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono">
+                        Speed: <span id="enemy-speed" class="text-slate-200">2</span> | Affinity: <span id="enemy-affinity" class="text-amber-400">3</span>
+                    </div>
+                </div>
+
+                <!-- HP Bar -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-semibold">
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-heart text-xs"></i> Health Points</span>
+                        <span id="enemy-hp-text" class="font-mono text-slate-200">25 / 25</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+                        <div id="enemy-hp-bar" class="h-full bg-emerald-500 transition-all duration-300 rounded-full" style="width: 100%;"></div>
+                        <div id="enemy-temphp-bar" class="h-full bg-cyan-400/80 absolute top-0 left-0 transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Strain Gauge (0 - 100%) -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-semibold">
+                        <span id="enemy-strain-label" class="text-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-amber-500"></i> Physical Strain
+                        </span>
+                        <span id="enemy-strain-text" class="font-mono text-amber-400 font-bold">0% / 100%</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+                        <div class="absolute top-0 bottom-0 left-[60%] w-0.5 bg-amber-500/80 z-10 shadow-[0_0_5px_#f59e0b]"></div>
+                        <div id="enemy-strain-bar" class="h-full bg-amber-500 transition-all duration-300 rounded-full" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                        <span>0% Clean</span>
+                        <span class="text-amber-500/80 font-bold">60% Amber</span>
+                        <span class="text-rose-500 font-bold">100% Calcified</span>
+                    </div>
+                </div>
+
+                <!-- Energy AN Orbs -->
+                <div class="flex items-center justify-between bg-slate-950/60 px-3 py-2 rounded-lg border border-slate-800/80">
+                    <span class="text-xs text-slate-400 font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-atom text-cyan-400"></i> AN Energy
+                    </span>
+                    <div id="enemy-an-container" class="flex items-center gap-1.5">
+                        <!-- AN Orbs rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <!-- Tactical Command Panel (2 AP Economy) -->
+            <div class="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="font-cinzel text-sm font-bold text-amber-400 uppercase tracking-wider">Activation Phase</span>
+                        <!-- AP Budget Indicators -->
+                        <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1 rounded-full border border-slate-800">
+                            <span class="text-xs text-slate-400 font-semibold">AP Budget:</span>
+                            <span id="ap-badge-1" class="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+                            <span id="ap-badge-2" class="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+                        </div>
+                    </div>
+                    <span id="turn-order-indicator" class="text-xs font-bold font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300">Your Turn</span>
+                </div>
+
+                <!-- Action Options Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                    <!-- Movement -->
+                    <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col gap-2">
+                        <span class="text-xs text-slate-400 font-semibold flex justify-between">
+                            <span><i class="fa-solid fa-person-walking text-slate-300"></i> Move on Grid</span>
+                            <span class="text-amber-400 font-mono">1 AP</span>
+                        </span>
+                        <button id="btn-move" onclick="toggleMoveMode()" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center justify-center gap-1.5 text-slate-200">
+                            <i class="fa-solid fa-arrows-up-down-left-right"></i> <span id="btn-move-label">Move (up to 3)</span>
+                        </button>
+                    </div>
+
+                    <!-- Vent Strain -->
+                    <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col gap-2">
+                        <span class="text-xs text-slate-400 font-semibold flex justify-between">
+                            <span><i class="fa-solid fa-wind text-cyan-400"></i> Vent Strain</span>
+                            <span class="text-amber-400 font-mono">1 AP</span>
+                        </span>
+                        <button id="btn-vent" onclick="playerAction('vent')" class="py-2 px-3 bg-cyan-950/50 hover:bg-cyan-900/60 active:scale-95 text-xs font-semibold rounded-lg transition border border-cyan-800/60 flex items-center justify-center gap-2 text-cyan-300">
+                            <i class="fa-solid fa-lungs"></i> Vent 10% Strain
+                        </button>
+                    </div>
+
+                    <!-- Slotted Spell 1 -->
+                    <div id="spell-1-card" class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between gap-2 relative overflow-hidden">
+                        <div>
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 id="spell-1-name" class="font-cinzel text-sm font-bold text-amber-300">Apexite Shard</h3>
+                                <div class="flex gap-1 text-[10px] font-mono">
+                                    <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
+                                    <span id="spell-1-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
+                                </div>
+                            </div>
+                            <p id="spell-1-desc" class="text-[11px] text-slate-400 leading-snug">Deal 4 damage (Range 1-3). If target Strain is 60% or more, deal 7 instead.</p>
+                        </div>
+                        <button id="btn-spell-1" onclick="playerAction('spell', 0)" class="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-hand-sparkles"></i> Cast Spell 1
+                        </button>
+                    </div>
+
+                    <!-- Slotted Spell 2 -->
+                    <div id="spell-2-card" class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between gap-2 relative overflow-hidden">
+                        <div>
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 id="spell-2-name" class="font-cinzel text-sm font-bold text-amber-300">Red Ink</h3>
+                                <div class="flex gap-1 text-[10px] font-mono">
+                                    <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
+                                    <span id="spell-2-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
+                                </div>
+                            </div>
+                            <p id="spell-2-desc" class="text-[11px] text-slate-400 leading-snug">Deal 3 damage (Range 1-3). Target gains +5% Strain.</p>
+                        </div>
+                        <button id="btn-spell-2" onclick="playerAction('spell', 1)" class="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-hand-sparkles"></i> Cast Spell 2
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Relic & Pass Footer Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+                    <!-- Relic Action -->
+                    <div class="flex items-center gap-2">
+                        <button id="btn-relic" onclick="playerAction('relic')" class="px-4 py-2 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                            <i class="fa-solid fa-gem text-purple-400"></i>
+                            <span id="relic-name">Invoke Relic: Shadow-Needle</span>
+                            <span class="text-[10px] bg-purple-900/80 px-1.5 py-0.5 rounded text-purple-200">FREE (1x/Bout)</span>
+                        </button>
+                    </div>
+
+                    <!-- Pass Turn -->
+                    <button id="btn-pass" onclick="playerAction('pass')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-forward-step"></i> Pass / End Activation
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-h-[250px]">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                    <span class="font-cinzel text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-scroll text-amber-500"></i> Fissure and Combat Log
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-mono">Live Feeds</span>
+                </div>
+
+                <div id="combat-log" class="flex-1 overflow-y-auto space-y-2 pr-1 font-mono text-xs max-h-[280px]">
+                    <!-- Log Entries Dynamic Output -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <div id="loadout-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-5 shadow-2xl">
+            <div>
+                <h2 class="font-cinzel text-2xl font-black text-amber-400 tracking-wide">CHOOSE YOUR DUEL LOADOUT</h2>
+                <p class="text-xs text-slate-400 mt-1">Select an archetype to represent you in the Eldora Blood Sport Arena.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="loadout-list">
+                <!-- Dynamically rendered loadout choices -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Borrowed Time reaction prompt -->
+    <div id="borrow-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl">
+            <div>
+                <h2 class="font-cinzel text-xl font-black text-amber-400 tracking-wide">BORROWED TIME</h2>
+                <p class="text-xs text-slate-400 mt-1">The opponent casts <span id="borrow-spell-name" class="text-rose-300 font-bold">a spell</span>. Spend 1 AP from your next activation to cast a counter right now. You still pay the counter's AN and Strain costs.</p>
+            </div>
+            <div id="borrow-buttons" class="flex flex-col gap-2">
+                <!-- Counter spell buttons rendered dynamically -->
+            </div>
+            <button onclick="declineBorrow()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition border border-slate-700">
+                Let it resolve
+            </button>
+        </div>
+    </div>
+
+    <div id="result-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full flex flex-col items-center text-center gap-4 shadow-2xl">
+            <div id="result-icon" class="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-3xl">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <div>
+                <h2 id="result-title" class="font-cinzel text-2xl font-bold text-amber-300">VICTORY</h2>
+                <p id="result-subtitle" class="text-xs text-slate-400 mt-1">The Watch has rendered its judgment.</p>
+            </div>
+            <p id="result-desc" class="text-sm text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono w-full">
+                Opponent calcified at 100% Strain.
+            </p>
+            <button onclick="document.getElementById('result-modal').classList.add('hidden'); document.getElementById('loadout-modal').classList.remove('hidden');" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-xs tracking-wider uppercase transition font-cinzel">
+                New Bout
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* Web Audio API Sound Effects Synthesizer */
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function playSound(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'cast') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'hit') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'amber') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'vent') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            } catch (e) {
+                // Audio context suppressed or unsupported
+            }
+        }
+
+        /* Canon weight classes: Ashweight, Emberweight, Ironweight, Wyrmweight, Sovereignweight */
+        const WEIGHT_STYLES = {
+            'Ashweight': 'bg-stone-950 text-stone-400 border-stone-700',
+            'Emberweight': 'bg-orange-950 text-orange-400 border-orange-800',
+            'Ironweight': 'bg-sky-950 text-sky-400 border-sky-800',
+            'Wyrmweight': 'bg-emerald-950 text-emerald-400 border-emerald-800',
+            'Sovereignweight': 'bg-amber-950 text-amber-300 border-amber-700'
+        };
+
+        const LOADOUTS = {
+            cinderkin: {
+                name: "Cinderkin",
+                weight: "Ashweight",
+                speed: 4,
+                anPerTick: 3,
+                affinity: 7,
+                maxHp: 25,
+                spells: [
+                    { name: "Flame-Jab", cost: 1, minRng: 1, maxRng: 2, desc: "Deal 5 Fire damage." },
+                    { name: "Pyre-Haymaker", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 14 Fire damage. Take +20% Strain yourself." }
+                ],
+                relic: { name: "Heart of the Forge", desc: "Vent 20% Strain and next spell deals +3 bonus damage." }
+            },
+            stalker: {
+                name: "Strand-Stalker",
+                weight: "Emberweight",
+                speed: 3,
+                anPerTick: 3,
+                affinity: 6,
+                maxHp: 25,
+                spells: [
+                    { name: "Apexite Shard", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 4 damage. Deals 7 damage if target Strain is 60% or more." },
+                    { name: "Red Ink", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 3 damage. Target gains +5% Strain." }
+                ],
+                relic: { name: "Shadow-Needle", desc: "Deal 2 damage and suppress enemy Relic for 1 tick." }
+            },
+            inkslinger: {
+                name: "Ink Slinger",
+                weight: "Ironweight",
+                speed: 3,
+                anPerTick: 4,
+                affinity: 5,
+                maxHp: 25,
+                spells: [
+                    { name: "AN Paper Burn", cost: 0, minRng: 0, maxRng: 0, desc: "Gain +1 AN instantly and Vent 5% Strain." },
+                    { name: "Bell Ringer's Toll", cost: 2, minRng: 1, maxRng: 2, desc: "Deal 3 damage (5 if target cast a spell last tick)." }
+                ],
+                relic: { name: "Thought Siphon", desc: "Deal 3 damage, Vent 10% Strain, +5% target Strain." }
+            },
+            knight: {
+                name: "Mirror-Knight",
+                weight: "Wyrmweight",
+                speed: 2,
+                anPerTick: 4,
+                affinity: 3,
+                maxHp: 25,
+                spells: [
+                    { name: "Calcified Bastion", cost: 1, minRng: 0, maxRng: 0, desc: "Gain 4 Temp HP. Gain 8 Temp HP if your Strain is 60% or more." },
+                    { name: "Maw of Consumption", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 6 damage. Gain Temp HP equal to half damage dealt." }
+                ],
+                relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
+            }
+        };
+
+        let gameState = {
+            tick: 1,
+            player: null,
+            enemy: null,
+            activeTurn: 'player', // 'player' or 'enemy'
+            isMatchOver: false,
+            lastCast: { player: false, enemy: false },
+            prevCast: { player: false, enemy: false },
+            borrowDecline: null
+        };
+
+        let moveMode = false;
+
+        /* Grid helpers: positions are {x:1-8, y:1-8}, distance is Chebyshev */
+        function chebyshev(a, b) {
+            return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+        }
+
+        function inBounds(x, y) {
+            return x >= 1 && x <= 8 && y >= 1 && y <= 8;
+        }
+
+        function inRange(spell, distance) {
+            if (spell.minRng === 0 && spell.maxRng === 0) return true; // self
+            return distance >= spell.minRng && distance <= spell.maxRng;
+        }
+
+        function canReach(fighter, foe, x, y) {
+            if (!inBounds(x, y)) return false;
+            if (x === foe.pos.x && y === foe.pos.y) return false;
+            return chebyshev(fighter.pos, { x, y }) <= fighter.speed;
+        }
+
+        function renderLoadoutPicker() {
+            const container = document.getElementById('loadout-list');
+            container.innerHTML = '';
+
+            Object.keys(LOADOUTS).forEach(key => {
+                const l = LOADOUTS[key];
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 border border-slate-800 hover:border-amber-500/50 p-4 rounded-xl cursor-pointer transition flex flex-col justify-between gap-3 group";
+                card.onclick = () => selectLoadout(key);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-cinzel text-base font-bold text-amber-300 group-hover:text-amber-400">${l.name}</h3>
+                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${WEIGHT_STYLES[l.weight]}">${l.weight}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-2 font-mono">Speed: ${l.speed} | AN/Tick: +${l.anPerTick} | HP: ${l.maxHp}</p>
+                        <div class="space-y-1 text-xs">
+                            <div class="text-slate-300 font-semibold">• ${l.spells[0].name} <span class="text-cyan-400">(${l.spells[0].cost} AN)</span></div>
+                            <div class="text-slate-300 font-semibold">• ${l.spells[1].name} <span class="text-cyan-400">(${l.spells[1].cost} AN)</span></div>
+                        </div>
+                    </div>
+                    <button class="w-full py-2 bg-slate-900 group-hover:bg-amber-500 group-hover:text-slate-950 text-slate-200 text-xs font-bold rounded-lg transition font-cinzel uppercase tracking-wider">
+                        Select Loadout
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectLoadout(playerKey) {
+            const keys = Object.keys(LOADOUTS).filter(k => k !== playerKey);
+            const enemyKey = keys[Math.floor(Math.random() * keys.length)];
+
+            gameState.player = createFighterState(LOADOUTS[playerKey], { x: 4, y: 2 });
+            gameState.enemy = createFighterState(LOADOUTS[enemyKey], { x: 4, y: 7 });
+
+            document.getElementById('loadout-modal').classList.add('hidden');
+            initGame();
+        }
+
+        function createFighterState(template, pos) {
+            return {
+                ...template,
+                pos: { ...pos },
+                hp: template.maxHp,
+                tempHp: 0,
+                strain: 0,
+                an: template.anPerTick,
+                ap: 2,
+                borrowedDebt: 0,
+                relicUsed: false,
+                relicSuppressed: false,
+                bonusNextDmg: 0
+            };
+        }
+
+        function initGame() {
+            if (!gameState.player) {
+                renderLoadoutPicker();
+                return;
+            }
+
+            gameState.tick = 1;
+            gameState.isMatchOver = false;
+            gameState.lastCast = { player: false, enemy: false };
+            gameState.prevCast = { player: false, enemy: false };
+            moveMode = false;
+            document.getElementById('borrow-modal').classList.add('hidden');
+
+            ['player', 'enemy'].forEach(side => {
+                const f = gameState[side];
+                f.hp = f.maxHp;
+                f.tempHp = 0;
+                f.strain = 0;
+                f.an = f.anPerTick;
+                f.ap = 2;
+                f.borrowedDebt = 0;
+                f.relicUsed = false;
+                f.relicSuppressed = false;
+                f.bonusNextDmg = 0;
+            });
+            gameState.player.pos = { x: 4, y: 2 };
+            gameState.enemy.pos = { x: 4, y: 7 };
+
+            document.getElementById('combat-log').innerHTML = '';
+            logMessage('system', 'Match Commenced! Tick 1 Channel Phase: AN regenerated.');
+
+            // Higher Affinity Index acts first
+            gameState.activeTurn = (gameState.player.affinity >= gameState.enemy.affinity) ? 'player' : 'enemy';
+
+            updateUI();
+
+            if (gameState.activeTurn === 'enemy') {
+                setTimeout(executeAITurn, 800);
+            }
+        }
+
+        function weightBadgeClass(weight) {
+            return `px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${WEIGHT_STYLES[weight] || 'bg-slate-900 text-slate-300 border-slate-700'}`;
+        }
+
+        function renderAnOrbs(containerId, amount) {
+            const box = document.getElementById(containerId);
+            box.innerHTML = '';
+            const shown = Math.min(12, Math.max(3, amount));
+            for (let i = 0; i < shown; i++) {
+                const isAvailable = i < amount;
+                box.innerHTML += `<div class="w-3 h-3 rounded-full border ${isAvailable ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_6px_#22d3ee]' : 'bg-slate-900 border-slate-700'}"></div>`;
+            }
+            if (amount > 12) {
+                box.innerHTML += `<span class="text-[10px] font-mono text-cyan-300">+${amount - 12}</span>`;
+            }
+        }
+
+        function updateUI() {
+            const p = gameState.player;
+            const e = gameState.enemy;
+
+            document.getElementById('tick-display').textContent = gameState.tick;
+
+            // Render 8x8 grid, y=8 at top
+            const grid = document.getElementById('arena-grid');
+            grid.innerHTML = '';
+            const distance = chebyshev(p.pos, e.pos);
+            document.getElementById('range-indicator').textContent = `Distance: ${distance} Square${distance === 1 ? '' : 's'}`;
+
+            for (let y = 8; y >= 1; y--) {
+                for (let x = 1; x <= 8; x++) {
+                    const cell = document.createElement('div');
+                    const isPlayerHere = (p.pos.x === x && p.pos.y === y);
+                    const isEnemyHere = (e.pos.x === x && e.pos.y === y);
+                    const isTarget = moveMode && canReach(p, e, x, y);
+
+                    let cellClasses = "arena-cell h-11 md:h-13 rounded-lg border flex items-center justify-center relative bg-slate-950/80 ";
+                    if (isPlayerHere && isEnemyHere) {
+                        cellClasses += "border-amber-500 bg-amber-950/30";
+                    } else if (isPlayerHere) {
+                        cellClasses += "border-cyan-500/80 bg-cyan-950/30";
+                    } else if (isEnemyHere) {
+                        cellClasses += "border-rose-500/80 bg-rose-950/30";
+                    } else {
+                        cellClasses += "border-slate-800/80";
+                    }
+                    if (isTarget) cellClasses += " move-target";
+
+                    cell.className = cellClasses;
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    if (moveMode && isTarget) {
+                        cell.onclick = () => onCellClick(x, y);
+                    }
+
+                    let avatar = '';
+                    if (isPlayerHere) {
+                        avatar += `<div class="w-6 h-6 rounded-md bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-300 text-[10px]" title="${p.name}"><i class="fa-solid fa-user-ninja"></i></div>`;
+                    }
+                    if (isEnemyHere) {
+                        avatar += `<div class="w-6 h-6 rounded-md bg-rose-500/20 border border-rose-400 flex items-center justify-center text-rose-300 text-[10px]" title="${e.name}"><i class="fa-solid fa-user-shield"></i></div>`;
+                    }
+                    cell.innerHTML = avatar;
+                    grid.appendChild(cell);
+                }
+            }
+
+            document.getElementById('move-hint').classList.toggle('hidden', !moveMode);
+
+            // Player card
+            document.getElementById('player-name').textContent = p.name;
+            const pBadge = document.getElementById('player-weight-badge');
+            pBadge.textContent = p.weight;
+            pBadge.className = weightBadgeClass(p.weight);
+            document.getElementById('player-speed').textContent = p.speed;
+            document.getElementById('player-affinity').textContent = p.affinity;
+            document.getElementById('player-hp-text').textContent = `${p.hp} / ${p.maxHp}`;
+            document.getElementById('player-hp-bar').style.width = `${Math.max(0, (p.hp / p.maxHp) * 100)}%`;
+            document.getElementById('player-temphp-bar').style.width = `${Math.min(100, (p.tempHp / p.maxHp) * 100)}%`;
+
+            document.getElementById('player-strain-text').textContent = `${p.strain}% / 100%`;
+            document.getElementById('player-strain-bar').style.width = `${Math.min(100, p.strain)}%`;
+
+            const pCard = document.getElementById('player-card');
+            if (p.strain >= 60) {
+                pCard.classList.add('amber-glow');
+                document.getElementById('player-strain-label').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400 animate-amber"></i> Physical Strain (SOUL-CRACK)`;
+            } else {
+                pCard.classList.remove('amber-glow');
+                document.getElementById('player-strain-label').innerHTML = `<i class="fa-solid fa-bolt text-amber-500"></i> Physical Strain`;
+            }
+
+            renderAnOrbs('player-an-container', p.an);
+
+            // Enemy card
+            document.getElementById('enemy-name').textContent = e.name;
+            const eBadge = document.getElementById('enemy-weight-badge');
+            eBadge.textContent = e.weight;
+            eBadge.className = weightBadgeClass(e.weight);
+            document.getElementById('enemy-speed').textContent = e.speed;
+            document.getElementById('enemy-affinity').textContent = e.affinity;
+            document.getElementById('enemy-hp-text').textContent = `${e.hp} / ${e.maxHp}`;
+            document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (e.hp / e.maxHp) * 100)}%`;
+            document.getElementById('enemy-temphp-bar').style.width = `${Math.min(100, (e.tempHp / e.maxHp) * 100)}%`;
+
+            document.getElementById('enemy-strain-text').textContent = `${e.strain}% / 100%`;
+            document.getElementById('enemy-strain-bar').style.width = `${Math.min(100, e.strain)}%`;
+
+            const eCard = document.getElementById('enemy-card');
+            if (e.strain >= 60) {
+                eCard.classList.add('amber-glow');
+            } else {
+                eCard.classList.remove('amber-glow');
+            }
+
+            renderAnOrbs('enemy-an-container', e.an);
+
+            // Spells UI
+            document.getElementById('spell-1-name').textContent = p.spells[0].name;
+            document.getElementById('spell-1-cost').textContent = `${p.spells[0].cost} AN`;
+            document.getElementById('spell-1-desc').textContent = p.spells[0].desc;
+
+            document.getElementById('spell-2-name').textContent = p.spells[1].name;
+            document.getElementById('spell-2-cost').textContent = `${p.spells[1].cost} AN`;
+            document.getElementById('spell-2-desc').textContent = p.spells[1].desc;
+
+            document.getElementById('relic-name').textContent = `Invoke Relic: ${p.relic.name}`;
+            document.getElementById('btn-move-label').textContent = `Move (up to ${p.speed})`;
+
+            // AP badges
+            const effAp = p.ap;
+            document.getElementById('ap-badge-1').className = `w-3 h-3 rounded-full ${effAp >= 1 ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-slate-800'}`;
+            document.getElementById('ap-badge-2').className = `w-3 h-3 rounded-full ${effAp >= 2 ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-slate-800'}`;
+
+            // Controls
+            const isPlayerTurn = (gameState.activeTurn === 'player') && !gameState.isMatchOver;
+            document.getElementById('turn-order-indicator').textContent = isPlayerTurn ? "Your Turn" : "Opponent Turn";
+            document.getElementById('turn-order-indicator').className = `text-xs font-bold font-mono px-2 py-0.5 rounded ${isPlayerTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`;
+
+            document.getElementById('btn-move').disabled = !isPlayerTurn || p.ap < 1;
+            document.getElementById('btn-vent').disabled = !isPlayerTurn || p.ap < 1 || p.strain <= 0;
+            document.getElementById('btn-spell-1').disabled = !isPlayerTurn || p.ap < 1;
+            document.getElementById('btn-spell-2').disabled = !isPlayerTurn || p.ap < 1;
+            document.getElementById('btn-relic').disabled = !isPlayerTurn || p.relicUsed || p.relicSuppressed;
+            document.getElementById('btn-pass').disabled = !isPlayerTurn;
+        }
+
+        function toggleMoveMode() {
+            if (gameState.activeTurn !== 'player' || gameState.isMatchOver) return;
+            if (gameState.player.ap < 1) return;
+            moveMode = !moveMode;
+            logMessage('player', moveMode ? 'Move mode: pick a glowing square.' : 'Move cancelled.');
+            updateUI();
+        }
+
+        function onCellClick(x, y) {
+            const p = gameState.player;
+            const e = gameState.enemy;
+            if (!moveMode || gameState.activeTurn !== 'player' || gameState.isMatchOver) return;
+            if (!canReach(p, e, x, y)) return;
+            p.pos = { x, y };
+            p.ap -= 1;
+            moveMode = false;
+            logMessage('player', `You moved to (${x}, ${y}). (1 AP spent)`);
+            checkMatchStatus();
+            updateUI();
+            maybeEndPlayerActivation();
+        }
+
+        function logMessage(type, text) {
+            const log = document.getElementById('combat-log');
+            const entry = document.createElement('div');
+
+            let colorClass = "text-slate-300";
+            if (type === 'player') colorClass = "text-cyan-300 border-l-2 border-cyan-500 pl-2";
+            if (type === 'enemy') colorClass = "text-rose-300 border-l-2 border-rose-500 pl-2";
+            if (type === 'system') colorClass = "text-amber-400 font-bold border-l-2 border-amber-500 pl-2";
+
+            entry.className = `${colorClass} py-0.5 text-[11px] leading-tight`;
+            entry.innerHTML = `<span class="opacity-60 text-[9px]">[T${gameState.tick}]</span> ${text}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function maybeEndPlayerActivation() {
+            const p = gameState.player;
+            if (p.ap <= 0 && !gameState.isMatchOver) {
+                moveMode = false;
+                gameState.activeTurn = 'enemy';
+                updateUI();
+                setTimeout(executeAITurn, 800);
+            }
+        }
+
+        function playerAction(actionType, param) {
+            if (gameState.activeTurn !== 'player' || gameState.isMatchOver) return;
+
+            const p = gameState.player;
+            const e = gameState.enemy;
+
+            if (actionType === 'vent') {
+                if (p.strain > 0 && p.ap >= 1) {
+                    p.strain = Math.max(0, p.strain - 10);
+                    p.ap -= 1;
+                    playSound('vent');
+                    logMessage('player', `You vented -10% Strain. Current Strain: ${p.strain}%. (1 AP spent)`);
+                }
+            } else if (actionType === 'relic') {
+                if (!p.relicUsed && !p.relicSuppressed) {
+                    p.relicUsed = true;
+                    logMessage('player', `RELIC INVOKED: You activated ${p.relic.name}!`);
+                    executeRelicEffect(p, e, 'player');
+                }
+            } else if (actionType === 'spell') {
+                const spell = p.spells[param];
+                if (p.ap >= 1) {
+                    payAn(p, spell.cost, 'player');
+                    p.ap -= 1;
+                    gameState.lastCast.player = true;
+                    playSound('cast');
+                    logMessage('player', `Cast ${spell.name}!`);
+                    executeSpellEffect(spell, p, e, 'player');
+                }
+            } else if (actionType === 'pass') {
+                moveMode = false;
+                p.ap = 0;
+                logMessage('player', `You passed remaining activation.`);
+            }
+
+            checkMatchStatus();
+            updateUI();
+            maybeEndPlayerActivation();
+        }
+
+        function payAn(fighter, cost, side) {
+            if (fighter.an < cost) {
+                const missing = cost - fighter.an;
+                const strainCost = missing * 10; // overchannel: +10% Strain per missing AN
+                fighter.an = 0;
+                fighter.strain += strainCost;
+                logMessage(side, `Overchanneled! Missing ${missing} AN converted to +${strainCost}% Strain.`);
+            } else {
+                fighter.an -= cost;
+            }
+        }
+
+        /* Spell damage that honors Heart of the Forge's +3 bonus */
+        function spellDamage(caster, target, base, casterType) {
+            const total = base + (caster.bonusNextDmg || 0);
+            caster.bonusNextDmg = 0;
+            return applyDamage(target, total, casterType);
+        }
+
+        function executeSpellEffect(spell, caster, target, casterType) {
+            const distance = chebyshev(caster.pos, target.pos);
+
+            if (!inRange(spell, distance)) {
+                logMessage(casterType, `${spell.name} missed! Target out of range (Dist: ${distance}).`);
+                return;
+            }
+
+            let dmg = 0;
+
+            if (spell.name === "Apexite Shard") {
+                dmg = (target.strain >= 60) ? 7 : 4;
+                spellDamage(caster, target, dmg, casterType);
+            } else if (spell.name === "Red Ink") {
+                dmg = 3;
+                target.strain += 5;
+                spellDamage(caster, target, dmg, casterType);
+                logMessage(casterType, `Red Ink forced +5% Strain onto target!`);
+            } else if (spell.name === "Calcified Bastion") {
+                const tempAmount = (caster.strain >= 60) ? 8 : 4;
+                caster.tempHp += tempAmount;
+                logMessage(casterType, `Calcified Bastion granted +${tempAmount} Temp HP!`);
+            } else if (spell.name === "Maw of Consumption") {
+                dmg = 6;
+                const dealt = spellDamage(caster, target, dmg, casterType);
+                const healTemp = Math.floor(dealt / 2);
+                caster.tempHp += healTemp;
+                logMessage(casterType, `Maw of Consumption siphoned +${healTemp} Temp HP!`);
+            } else if (spell.name === "Flame-Jab") {
+                dmg = 5;
+                spellDamage(caster, target, dmg, casterType);
+            } else if (spell.name === "Pyre-Haymaker") {
+                dmg = 14;
+                caster.strain += 20;
+                spellDamage(caster, target, dmg, casterType);
+                logMessage(casterType, `Pyre-Haymaker generated +20% Strain on caster!`);
+            } else if (spell.name === "AN Paper Burn") {
+                caster.an += 1;
+                caster.strain = Math.max(0, caster.strain - 5);
+                logMessage(casterType, `Burned AN paper: +1 AN gained, -5% Strain vented!`);
+            } else if (spell.name === "Bell Ringer's Toll") {
+                const oppPrevCast = casterType === 'player' ? gameState.prevCast.enemy : gameState.prevCast.player;
+                dmg = oppPrevCast ? 5 : 3;
+                spellDamage(caster, target, dmg, casterType);
+            }
+        }
+
+        function applyDamage(target, amount, source) {
+            playSound('hit');
+            let remaining = amount;
+
+            if (target.tempHp > 0) {
+                if (target.tempHp >= remaining) {
+                    target.tempHp -= remaining;
+                    remaining = 0;
+                } else {
+                    remaining -= target.tempHp;
+                    target.tempHp = 0;
+                }
+            }
+
+            target.hp = Math.max(0, target.hp - remaining);
+            logMessage(source, `Dealt ${amount} damage (${remaining} to HP). Target HP: ${target.hp}`);
+            return amount;
+        }
+
+        function executeRelicEffect(caster, target, casterType) {
+            if (caster.relic.name === "Shadow-Needle") {
+                target.relicSuppressed = true;
+                applyDamage(target, 2, casterType);
+                logMessage(casterType, `Shadow-Needle suppressed opponent Relic for 1 tick!`);
+            } else if (caster.relic.name === "Aegis of Amber") {
+                caster.tempHp += 6;
+                caster.strain = Math.max(0, caster.strain - 15);
+                logMessage(casterType, `Aegis of Amber granted +6 Temp HP and vented -15% Strain!`);
+            } else if (caster.relic.name === "Heart of the Forge") {
+                caster.strain = Math.max(0, caster.strain - 20);
+                caster.bonusNextDmg = 3;
+                logMessage(casterType, `Heart of the Forge vented -20% Strain! Next spell deals +3 damage.`);
+            } else if (caster.relic.name === "Thought Siphon") {
+                caster.strain = Math.max(0, caster.strain - 10);
+                target.strain += 5;
+                applyDamage(target, 3, casterType);
+                logMessage(casterType, `Thought Siphon drained thoughts! Target +5% Strain.`);
+            }
+        }
+
+        /* ---------------- AI turn (stepwise, supports Borrowed Time) ---------------- */
+
+        function executeAITurn() {
+            if (gameState.isMatchOver) return;
+            logMessage('enemy', `${gameState.enemy.name} begins activation...`);
+            updateUI();
+            setTimeout(aiTakeStep, 500);
+        }
+
+        function aiTakeStep() {
+            if (gameState.isMatchOver) return;
+            const e = gameState.enemy;
+            const p = gameState.player;
+
+            if (e.ap <= 0) {
+                endAITurn();
+                return;
+            }
+
+            const distance = chebyshev(e.pos, p.pos);
+
+            // Option 1: Invoke Relic when strained or hurt
+            if (!e.relicUsed && !e.relicSuppressed && (e.strain >= 50 || e.hp < 15)) {
+                e.relicUsed = true;
+                logMessage('enemy', `ENEMY RELIC: ${e.relic.name}!`);
+                executeRelicEffect(e, p, 'enemy');
+                checkMatchStatus();
+                updateUI();
+                if (!gameState.isMatchOver) setTimeout(aiTakeStep, 500);
+                return;
+            }
+
+            // Option 2: High Strain -> Vent
+            if (e.strain >= 80) {
+                e.strain = Math.max(0, e.strain - 10);
+                e.ap -= 1;
+                logMessage('enemy', `Enemy vented -10% Strain.`);
+                updateUI();
+                setTimeout(aiTakeStep, 500);
+                return;
+            }
+
+            // Option 3: Cast Spell 2 if in range
+            const s2 = e.spells[1];
+            if (inRange(s2, distance)) {
+                aiCastSpell(s2);
+                return;
+            }
+
+            // Option 4: Cast Spell 1 if in range
+            const s1 = e.spells[0];
+            if (inRange(s1, distance)) {
+                aiCastSpell(s1);
+                return;
+            }
+
+            // Option 5: Move closer
+            if (distance > 1) {
+                aiMoveCloser();
+                updateUI();
+                setTimeout(aiTakeStep, 500);
+                return;
+            }
+
+            // Nothing useful: pass
+            e.ap = 0;
+            endAITurn();
+        }
+
+        function aiMoveCloser() {
+            const e = gameState.enemy;
+            const p = gameState.player;
+            let best = null;
+            let bestDist = chebyshev(e.pos, p.pos);
+            for (let y = 1; y <= 8; y++) {
+                for (let x = 1; x <= 8; x++) {
+                    if (x === p.pos.x && y === p.pos.y) continue;
+                    if (chebyshev(e.pos, { x, y }) > e.speed) continue;
+                    const d = chebyshev({ x, y }, p.pos);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = { x, y };
+                    }
+                }
+            }
+            if (best) {
+                e.pos = best;
+                e.ap -= 1;
+                logMessage('enemy', `Enemy moved to (${best.x}, ${best.y}).`);
+            } else {
+                e.ap = 0;
+            }
+        }
+
+        function aiCastSpell(spell) {
+            offerBorrowedTime(spell, () => {
+                if (gameState.isMatchOver) return;
+                const e = gameState.enemy;
+                const p = gameState.player;
+                payAn(e, spell.cost, 'enemy');
+                e.ap -= 1;
+                gameState.lastCast.enemy = true;
+                playSound('cast');
+                logMessage('enemy', `Enemy cast ${spell.name}!`);
+                executeSpellEffect(spell, e, p, 'enemy');
+                checkMatchStatus();
+                updateUI();
+                if (!gameState.isMatchOver) setTimeout(aiTakeStep, 500);
+            });
+        }
+
+        function endAITurn() {
+            checkMatchStatus();
+            if (!gameState.isMatchOver) {
+                advanceTick();
+            }
+            updateUI();
+        }
+
+        /* ---------------- Borrowed Time ---------------- */
+
+        function offerBorrowedTime(spell, done) {
+            const p = gameState.player;
+            if (gameState.isMatchOver) { done(); return; }
+            if (p.borrowedDebt >= 2) {
+                logMessage('system', 'Borrowed Time unavailable: no AP left to borrow.');
+                done();
+                return;
+            }
+
+            document.getElementById('borrow-spell-name').textContent = spell.name;
+            const btns = document.getElementById('borrow-buttons');
+            btns.innerHTML = '';
+
+            p.spells.forEach((s, idx) => {
+                let extraStrain = 0;
+                if (p.an < s.cost) extraStrain = (s.cost - p.an) * 10;
+                const deadly = (p.strain + extraStrain) >= 100;
+                const b = document.createElement('button');
+                b.className = `w-full py-2 px-3 text-xs font-bold rounded-lg transition border flex items-center justify-center gap-1.5 ${deadly ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' : 'bg-amber-600/20 hover:bg-amber-600/30 border-amber-500/40 text-amber-300'}`;
+                b.disabled = deadly;
+                b.innerHTML = `<i class="fa-solid fa-bolt"></i> Counter with ${s.name} (${s.cost} AN${extraStrain > 0 ? `, +${extraStrain}% Strain` : ''})`;
+                b.onclick = () => doBorrowCounter(idx, done);
+                btns.appendChild(b);
+            });
+
+            gameState.borrowDecline = () => {
+                document.getElementById('borrow-modal').classList.add('hidden');
+                gameState.borrowDecline = null;
+                done();
+            };
+            document.getElementById('borrow-modal').classList.remove('hidden');
+        }
+
+        function declineBorrow() {
+            if (gameState.borrowDecline) gameState.borrowDecline();
+        }
+
+        function doBorrowCounter(idx, done) {
+            const p = gameState.player;
+            const e = gameState.enemy;
+            const spell = p.spells[idx];
+            document.getElementById('borrow-modal').classList.add('hidden');
+            gameState.borrowDecline = null;
+
+            payAn(p, spell.cost, 'player');
+
+            if (gameState.tick >= 6) {
+                // No next activation on the final tick: the debt burns as Strain
+                p.strain += 10;
+                logMessage('player', 'Borrowed Time on the final tick: no next activation, the debt burns as +10% Strain.');
+            } else {
+                p.borrowedDebt += 1;
+                logMessage('player', `Borrowed Time: spent 1 AP from your next activation (debt: ${p.borrowedDebt}).`);
+            }
+
+            playSound('cast');
+            logMessage('player', `Counter cast: ${spell.name}!`);
+            executeSpellEffect(spell, p, e, 'player');
+            checkMatchStatus();
+            updateUI();
+            done();
+        }
+
+        /* ---------------- Tick advancement ---------------- */
+
+        function advanceTick() {
+            gameState.tick += 1;
+
+            if (gameState.tick > 6) {
+                resolveWatchJudgement();
+                return;
+            }
+
+            // Snapshot last tick's casts before reset (Bell Ringer's Toll reads this)
+            gameState.prevCast = { ...gameState.lastCast };
+            gameState.lastCast = { player: false, enemy: false };
+
+            // Channel Phase: AN per tick, AP reset minus borrowed debt
+            const p = gameState.player;
+            const e = gameState.enemy;
+
+            p.an += p.anPerTick;
+            p.ap = Math.max(0, 2 - p.borrowedDebt);
+            if (p.borrowedDebt > 0) {
+                logMessage('system', `Borrowed Time debt collected: you start this activation with ${p.ap} AP.`);
+            }
+            p.borrowedDebt = 0;
+            p.relicSuppressed = false;
+
+            e.an += e.anPerTick;
+            e.ap = 2;
+            e.relicSuppressed = false;
+
+            logMessage('system', `--- TICK ${gameState.tick} CHANNEL PHASE --- both fighters gain AN!`);
+
+            gameState.activeTurn = (p.affinity >= e.affinity) ? 'player' : 'enemy';
+
+            if (gameState.activeTurn === 'enemy') {
+                setTimeout(executeAITurn, 800);
+            }
+        }
+
+        function checkMatchStatus() {
+            const p = gameState.player;
+            const e = gameState.enemy;
+            if (gameState.isMatchOver) return;
+
+            if (p.strain >= 100) {
+                triggerMatchEnd("DEFEAT: CALCIFIED", "Your body reached 100% Strain and calcified into stone on the spot.", false);
+            } else if (e.strain >= 100) {
+                triggerMatchEnd("VICTORY: ENEMY CALCIFIED", "The opponent reached 100% Strain and calcified. The Watch awards you the bout!", true);
+            } else if (p.hp <= 0) {
+                // The Watch intervenes: the fighter Yields, taxed +10% Strain
+                p.strain += 10;
+                logMessage('system', `The Watch intervenes! ${p.name} Yields at 0 HP. +10% Strain.`);
+                if (p.strain >= 100) {
+                    triggerMatchEnd("DEFEAT: CALCIFIED", "You Yielded, and the Strain of the Yield calcified you on the spot.", false);
+                } else {
+                    triggerMatchEnd("DEFEAT: YIELD", "Your HP was depleted. The Watch stepped in, you Yielded (+10% Strain).", false);
+                }
+            } else if (e.hp <= 0) {
+                e.strain += 10;
+                logMessage('system', `The Watch intervenes! ${e.name} Yields at 0 HP. +10% Strain.`);
+                if (e.strain >= 100) {
+                    triggerMatchEnd("VICTORY: ENEMY CALCIFIED", "The opponent Yielded, and the Strain of the Yield calcified them.", true);
+                } else {
+                    triggerMatchEnd("VICTORY: YIELD", "You depleted the opponent's HP! The Watch declares you the winner.", true);
+                }
+            }
+        }
+
+        function resolveWatchJudgement() {
+            const p = gameState.player;
+            const e = gameState.enemy;
+
+            logMessage('system', `TICK 6 EXPIRED: The Watch steps onto the arena floor to judge victory.`);
+
+            if (p.hp > e.hp) {
+                triggerMatchEnd("WATCH DECISION: VICTORY", `Match time expired. You have higher HP (${p.hp} vs ${e.hp}).`, true);
+            } else if (e.hp > p.hp) {
+                triggerMatchEnd("WATCH DECISION: DEFEAT", `Match time expired. Opponent has higher HP (${e.hp} vs ${p.hp}).`, false);
+            } else if (p.strain < e.strain) {
+                triggerMatchEnd("WATCH DECISION: VICTORY", `HP tied! You won on lower Strain (${p.strain}% vs ${e.strain}%).`, true);
+            } else if (e.strain < p.strain) {
+                triggerMatchEnd("WATCH DECISION: DEFEAT", `HP tied! Opponent won on lower Strain (${e.strain}% vs ${p.strain}%).`, false);
+            } else {
+                // Fully tied: the witnesses decide
+                const playerWins = Math.random() < 0.5;
+                logMessage('system', 'HP and Strain both tied. The witnesses render the final call.');
+                if (playerWins) {
+                    triggerMatchEnd("WATCH DECISION: VICTORY", "Dead even. The witnesses favored your showing.", true);
+                } else {
+                    triggerMatchEnd("WATCH DECISION: DEFEAT", "Dead even. The witnesses favored the opponent.", false);
+                }
+            }
+        }
+
+        function triggerMatchEnd(title, desc, isWin) {
+            gameState.isMatchOver = true;
+            moveMode = false;
+            document.getElementById('borrow-modal').classList.add('hidden');
+            const modal = document.getElementById('result-modal');
+            document.getElementById('result-title').textContent = title;
+            document.getElementById('result-desc').textContent = desc;
+
+            const icon = document.getElementById('result-icon');
+            if (isWin) {
+                icon.className = "w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-3xl";
+                icon.innerHTML = `<i class="fa-solid fa-trophy"></i>`;
+            } else {
+                icon.className = "w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 text-3xl";
+                icon.innerHTML = `<i class="fa-solid fa-skull"></i>`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // On Load Window Initialization
+        window.onload = function() {
+            renderLoadoutPicker();
+        };
+    </script>
+</body>
+</html>
