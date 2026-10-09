@@ -358,6 +358,19 @@
                     { name: "Maw of Consumption", cost: 3, minRng: 1, maxRng: 1, desc: "Deal 6 damage. Gain Temp HP equal to half damage dealt." }
                 ],
                 relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
+            },
+            gavelbearer: {
+                name: "Gavelbearer",
+                weight: "Sovereignweight",
+                speed: 2,
+                anPerTick: 5,
+                affinity: 6,
+                maxHp: 25,
+                spells: [
+                    { name: "Decree of Ruin", cost: 3, minRng: 1, maxRng: 4, desc: "Deal 4 damage. Target gains +10% Strain." },
+                    { name: "The Throne's Weight", cost: 4, minRng: 1, maxRng: 3, desc: "Deal 4 damage. Deals 8 damage if target Strain is 40% or more." }
+                ],
+                relic: { name: "Hollow Crown", desc: "Target gains +10% Strain. You Vent 10% Strain." }
             }
         };
 
@@ -817,6 +830,14 @@
                 target.strain += 5;
                 spellDamage(caster, target, dmg, casterType);
                 logMessage(casterType, `Red Ink forced +5% Strain onto target!`);
+            } else if (spell.name === "Decree of Ruin") {
+                dmg = 4;
+                target.strain += 10;
+                spellDamage(caster, target, dmg, casterType);
+                logMessage(casterType, `Decree of Ruin forced +10% Strain onto target!`);
+            } else if (spell.name === "The Throne's Weight") {
+                dmg = (target.strain >= 40) ? 8 : 4;
+                spellDamage(caster, target, dmg, casterType);
             } else if (spell.name === "Calcified Bastion") {
                 const tempAmount = (caster.strain >= 40) ? 8 : 4;
                 caster.tempHp += tempAmount;
@@ -883,6 +904,10 @@
                 target.strain += 5;
                 applyDamage(target, 3, casterType);
                 logMessage(casterType, `Thought Siphon drained thoughts! Target +5% Strain.`);
+            } else if (caster.relic.name === "Hollow Crown") {
+                target.strain += 10;
+                caster.strain = Math.max(0, caster.strain - 10);
+                logMessage(casterType, `Hollow Crown forced +10% Strain onto the target and vented -10% Strain!`);
             }
         }
 
