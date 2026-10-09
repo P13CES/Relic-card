@@ -548,6 +548,21 @@
             return distance >= spell.minRng && distance <= spell.maxRng;
         }
 
+        function isSelfSpell(spell) {
+            return spell.minRng === 0 && spell.maxRng === 0;
+        }
+
+        /* AI only bothers with a self-cast when it does something useful */
+        function selfSpellUseful(spell, f) {
+            if (spell.name === "Calcified Bastion") {
+                return f.hp < f.maxHp || f.strain >= 60 || f.tempHp <= 0;
+            }
+            if (spell.name === "AN Paper Burn") {
+                return f.an < 2 || f.strain > 0;
+            }
+            return true;
+        }
+
         function canReach(fighter, foe, x, y) {
             if (!inBounds(x, y)) return false;
             if (x === foe.pos.x && y === foe.pos.y) return false;
@@ -1035,25 +1050,35 @@
                 return;
             }
 
-            // Option 3: Cast Spell 2 if in range
+            // Option 3: Cast damaging Spell 2 if in range
             const s2 = e.spells[1];
-            if (inRange(s2, distance)) {
+            if (!isSelfSpell(s2) && inRange(s2, distance)) {
                 aiCastSpell(s2);
                 return;
             }
 
-            // Option 4: Cast Spell 1 if in range
+            // Option 4: Cast damaging Spell 1 if in range
             const s1 = e.spells[0];
-            if (inRange(s1, distance)) {
+            if (!isSelfSpell(s1) && inRange(s1, distance)) {
                 aiCastSpell(s1);
                 return;
             }
 
-            // Option 5: Move closer
+            // Option 5: Move closer when out of striking range
             if (distance > 1) {
                 aiMoveCloser();
                 updateUI();
                 setTimeout(aiTakeStep, 500);
+                return;
+            }
+
+            // Option 6: Self-buffs, only when useful
+            if (isSelfSpell(s2) && selfSpellUseful(s2, e)) {
+                aiCastSpell(s2);
+                return;
+            }
+            if (isSelfSpell(s1) && selfSpellUseful(s1, e)) {
+                aiCastSpell(s1);
                 return;
             }
 
@@ -1088,7 +1113,7 @@
         }
 
         function aiCastSpell(spell) {
-            offerBorrowedTime(spell, () => {
+            const resolve = () => {
                 if (gameState.isMatchOver) return;
                 const e = gameState.enemy;
                 const p = gameState.player;
@@ -1101,7 +1126,13 @@
                 checkMatchStatus();
                 updateUI();
                 if (!gameState.isMatchOver) setTimeout(aiTakeStep, 500);
-            });
+            };
+            // Borrowed Time answers hostile casts; self-buffs resolve quietly
+            if (isSelfSpell(spell)) {
+                resolve();
+            } else {
+                offerBorrowedTime(spell, resolve);
+            }
         }
 
         function endAITurn() {
@@ -1213,6 +1244,12 @@
             gameState.activeTurn = (gameState.prevFirst === 'player') ? 'enemy' : 'player';
             gameState.prevFirst = gameState.activeTurn;
             logMessage('system', `${gameState.activeTurn === 'player' ? 'You activate' : 'The opponent activates'} first this tick.`);
+
+            // Borrowed Time debt can leave you with 0 AP: pass the activation
+            if (gameState.activeTurn === 'player' && p.ap <= 0) {
+                logMessage('system', 'Borrowed Time debt leaves you with 0 AP. Your activation passes.');
+                gameState.activeTurn = 'enemy';
+            }
 
             if (gameState.activeTurn === 'enemy') {
                 setTimeout(executeAITurn, 800);
