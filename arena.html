@@ -321,20 +321,6 @@
                 ],
                 relic: { name: "Heart of the Forge", desc: "Vent 20% Strain and next spell deals +3 bonus damage." }
             },
-            stalker: {
-                name: "Strand-Stalker",
-                flavor: "Emberweight hunter of the Calcified Strand.",
-                weight: "Emberweight",
-                speed: 3,
-                anPerTick: 3,
-                affinity: 6,
-                maxHp: 25,
-                spells: [
-                    { name: "Apexite Shard", cost: 2, minRng: 1, maxRng: 3, desc: "A shard of Apexite, the mineral of total calcification. Deal 4 damage, 7 if target Strain is 40% or more." },
-                    { name: "Red Ink", cost: 2, minRng: 1, maxRng: 3, desc: "Written in the Red Ink Ledger. Deal 3 damage. Target gains +5% Strain." }
-                ],
-                relic: { name: "Shadow-Needle", desc: "Deal 2 damage and suppress enemy Relic for 1 tick." }
-            },
             inkslinger: {
                 name: "Ink Slinger",
                 flavor: "Ironweight duelist who writes in Red Ink.",
@@ -344,24 +330,66 @@
                 affinity: 5,
                 maxHp: 25,
                 spells: [
-                    { name: "AN Paper Burn", cost: 0, minRng: 0, maxRng: 0, desc: "Burn AN Paper to bypass Strain. Gain +1 AN and Vent 10% Strain." },
-                    { name: "Bell Ringer's Toll", cost: 2, minRng: 1, maxRng: 2, desc: "The Bell Ringers of Bluewall answer casting with ringing. Deal 4 damage, 6 if the target cast last tick." }
+                    { name: "Red Ink", cost: 2, minRng: 1, maxRng: 3, desc: "Written in the Red Ink Ledger. Deal 3 damage. Target gains +5% Strain." },
+                    { name: "Apexite Shard", cost: 2, minRng: 1, maxRng: 3, desc: "A shard of Apexite, the mineral of total calcification. Deal 4 damage, 7 if target Strain is 40% or more." }
                 ],
                 relic: { name: "Thought Siphon", desc: "Siphons thoughts the way Memory Wells do. Deal 3 damage, Vent 10% Strain, +5% target Strain." }
             },
-            knight: {
-                name: "Mirror-Knight",
-                flavor: "Wyrmweight knight sworn to the Great Consumption.",
+            tollkeeper: {
+                name: "Tollkeeper",
+                flavor: "Emberweight keeper of Bluewall's bells.",
+                weight: "Emberweight",
+                speed: 3,
+                anPerTick: 3,
+                affinity: 5,
+                maxHp: 25,
+                spells: [
+                    { name: "Bell Ringer's Toll", cost: 2, minRng: 1, maxRng: 2, desc: "The Bell Ringers of Bluewall answer casting with ringing. Deal 4 damage, 6 if the target cast last tick." },
+                    { name: "Calcified Bastion", cost: 1, minRng: 0, maxRng: 0, desc: "Raise a bastion of gold-violet calcification. Gain 4 Temp HP, 8 if your Strain is 40% or more." }
+                ],
+                relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
+            },
+            kingsecho: {
+                name: "King's Echo",
+                flavor: "Wyrmweight echo of Bluewall's sorcerer-kings.",
                 weight: "Wyrmweight",
                 speed: 2,
                 anPerTick: 4,
                 affinity: 3,
                 maxHp: 25,
                 spells: [
-                    { name: "Calcified Bastion", cost: 1, minRng: 0, maxRng: 0, desc: "Raise a bastion of gold-violet calcification. Gain 4 Temp HP, 8 if your Strain is 40% or more." },
-                    { name: "Maw of Consumption", cost: 3, minRng: 1, maxRng: 1, desc: "The Cult of the Great Consumption teaches: devour. Deal 6 damage. Gain Temp HP equal to half dealt." }
+                    { name: "Wither", cost: 3, minRng: 1, maxRng: 3, desc: "Deal 7 damage. The target's next spell costs +1 AN." },
+                    { name: "Transmute", cost: 2, minRng: 1, maxRng: 2, desc: "Deal 4 damage. Gain 4 Temp HP." }
                 ],
-                relic: { name: "Aegis of Amber", desc: "Gain 6 Temp HP and Vent 15% Strain." }
+                relic: { name: "Shadow-Needle", desc: "Deal 2 damage and suppress enemy Relic for 1 tick." }
+            },
+            ringfactor: {
+                name: "Ring Factor",
+                flavor: "Ironweight factor of the Eight Rings Trading Company.",
+                weight: "Ironweight",
+                speed: 3,
+                anPerTick: 4,
+                affinity: 4,
+                maxHp: 25,
+                spells: [
+                    { name: "AN Paper Burn", cost: 0, minRng: 0, maxRng: 0, desc: "Burn AN Paper to bypass Strain. Gain +1 AN and Vent 10% Strain." },
+                    { name: "Siphon Weave", cost: 2, minRng: 1, maxRng: 3, desc: "Deal 3 damage. Steal 2 AN from the target." }
+                ],
+                relic: { name: "Guild Seal", desc: "Gain 4 Temp HP and 2 AN." }
+            },
+            proxy: {
+                name: "Proxy",
+                flavor: "Emberweight proxy of Palin's board-senate.",
+                weight: "Emberweight",
+                speed: 3,
+                anPerTick: 3,
+                affinity: 6,
+                maxHp: 25,
+                spells: [
+                    { name: "Dead Air", cost: 2, minRng: 1, maxRng: 4, desc: "The target's next spell costs +2 AN." },
+                    { name: "Jaunt Strike", cost: 2, minRng: 1, maxRng: 2, desc: "Deal 5 damage. Gain 1 AN." }
+                ],
+                relic: { name: "Tabula Rasa", desc: "If your Strain is above 40%, reduce it to 40%." }
             },
             gavelbearer: {
                 name: "Gavelbearer",
@@ -376,6 +404,20 @@
                     { name: "The Throne's Weight", cost: 4, minRng: 1, maxRng: 3, desc: "Deal 4 damage. Deals 8 damage if target Strain is 40% or more." }
                 ],
                 relic: { name: "Hollow Crown", desc: "Target gains +10% Strain. You Vent 10% Strain." }
+            },
+            gargoyle: {
+                name: "Gargoyle",
+                flavor: "Ashweight gargoyle of congealed light.",
+                weight: "Ashweight",
+                speed: 4,
+                anPerTick: 3,
+                affinity: 6,
+                maxHp: 25,
+                spells: [
+                    { name: "Radiance Beam", cost: 2, minRng: 1, maxRng: 3, desc: "A beam of congealed radiance. Deal 5 damage." },
+                    { name: "Stone Perch", cost: 1, minRng: 0, maxRng: 0, desc: "False Appearance as carved stone. Gain 6 Temp HP." }
+                ],
+                relic: { name: "Dawn Perch", desc: "Gain 6 Temp HP and Vent 10% Strain." }
             }
         };
 
@@ -479,6 +521,7 @@
                 an: template.anPerTick,
                 ap: 2,
                 borrowedDebt: 0,
+                taxNextSpell: 0,
                 relicUsed: false,
                 relicSuppressed: false,
                 bonusNextDmg: 0
@@ -506,6 +549,7 @@
                 f.an = f.anPerTick;
                 f.ap = 2;
                 f.borrowedDebt = 0;
+                f.taxNextSpell = 0;
                 f.relicUsed = false;
                 f.relicSuppressed = false;
                 f.bonusNextDmg = 0;
@@ -793,14 +837,20 @@
         }
 
         function payAn(fighter, cost, side) {
-            if (fighter.an < cost) {
-                const missing = cost - fighter.an;
+            const tax = fighter.taxNextSpell || 0;
+            if (tax > 0) {
+                logMessage(side, `Spell tax: +${tax} AN on this cast.`);
+            }
+            fighter.taxNextSpell = 0;
+            const total = cost + tax;
+            if (fighter.an < total) {
+                const missing = total - fighter.an;
                 const strainCost = missing * 10; // overchannel: +10% Strain per missing AN
                 fighter.an = 0;
                 fighter.strain += strainCost;
                 logMessage(side, `Overchanneled! Missing ${missing} AN converted to +${strainCost}% Strain.`);
             } else {
-                fighter.an -= cost;
+                fighter.an -= total;
             }
         }
 
@@ -844,6 +894,37 @@
             } else if (spell.name === "The Throne's Weight") {
                 dmg = (target.strain >= 40) ? 8 : 4;
                 spellDamage(caster, target, dmg, casterType);
+            } else if (spell.name === "Wither") {
+                dmg = 7;
+                target.taxNextSpell = (target.taxNextSpell || 0) + 1;
+                spellDamage(caster, target, dmg, casterType);
+                logMessage(casterType, `Wither taxed the target's next spell (+1 AN).`);
+            } else if (spell.name === "Transmute") {
+                dmg = 4;
+                spellDamage(caster, target, dmg, casterType);
+                caster.tempHp += 4;
+                logMessage(casterType, `Transmute forged +4 Temp HP!`);
+            } else if (spell.name === "Siphon Weave") {
+                dmg = 3;
+                spellDamage(caster, target, dmg, casterType);
+                const stolen = Math.min(2, target.an);
+                target.an -= stolen;
+                gainAn(caster, stolen);
+                logMessage(casterType, `Siphon Weave stole ${stolen} AN!`);
+            } else if (spell.name === "Dead Air") {
+                target.taxNextSpell = (target.taxNextSpell || 0) + 2;
+                logMessage(casterType, `Dead Air chokes the target's next spell (+2 AN).`);
+            } else if (spell.name === "Jaunt Strike") {
+                dmg = 5;
+                spellDamage(caster, target, dmg, casterType);
+                gainAn(caster, 1);
+                logMessage(casterType, `Jaunt Strike refunded +1 AN!`);
+            } else if (spell.name === "Radiance Beam") {
+                dmg = 5;
+                spellDamage(caster, target, dmg, casterType);
+            } else if (spell.name === "Stone Perch") {
+                caster.tempHp += 6;
+                logMessage(casterType, `Stone Perch: still as carved stone, +6 Temp HP!`);
             } else if (spell.name === "Calcified Bastion") {
                 const tempAmount = (caster.strain >= 40) ? 8 : 4;
                 caster.tempHp += tempAmount;
@@ -914,6 +995,21 @@
                 target.strain += 10;
                 caster.strain = Math.max(0, caster.strain - 10);
                 logMessage(casterType, `Hollow Crown forced +10% Strain onto the target and vented -10% Strain!`);
+            } else if (caster.relic.name === "Guild Seal") {
+                caster.tempHp += 4;
+                gainAn(caster, 2);
+                logMessage(casterType, `Guild Seal stamped: +4 Temp HP and +2 AN!`);
+            } else if (caster.relic.name === "Tabula Rasa") {
+                if (caster.strain > 40) {
+                    caster.strain = 40;
+                    logMessage(casterType, `Tabula Rasa wiped the slate: Strain reduced to 40%!`);
+                } else {
+                    logMessage(casterType, `Tabula Rasa found a clean slate: no Strain to wipe.`);
+                }
+            } else if (caster.relic.name === "Dawn Perch") {
+                caster.tempHp += 6;
+                caster.strain = Math.max(0, caster.strain - 10);
+                logMessage(casterType, `Dawn Perch: +6 Temp HP and vented -10% Strain!`);
             }
         }
 
