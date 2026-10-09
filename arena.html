@@ -123,7 +123,8 @@
             <div id="arena-grid" class="grid grid-cols-8 gap-1.5 md:gap-2 my-2 max-w-xl mx-auto">
                 <!-- Dynamically Rendered Cells -->
             </div>
-            <p id="move-hint" class="hidden text-center text-xs text-cyan-300 font-mono mt-2">Move mode: click a glowing square to move there (1 AP)</p>
+            <p id="move-hint" class="hidden text-center text-xs text-cyan-300 font-mono mt-2">Move mode: tap a glowing square (1 AP)</p>
+            <p class="text-center text-[10px] text-slate-500 font-mono mt-1">Tip: tap your fighter to move</p>
         </section>
 
         <section class="grid grid-cols-1 md:grid-cols-2 gap-5 order-3 lg:order-none lg:col-span-3">
@@ -256,82 +257,52 @@
                 </div>
 
                 <!-- Action Options Grid -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3">
 
-                    <!-- Movement -->
-                    <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col gap-2">
-                        <span class="text-xs text-slate-400 font-semibold flex justify-between">
-                            <span><i class="fa-solid fa-person-walking text-slate-300"></i> Move on Grid</span>
-                            <span class="text-amber-400 font-mono">1 AP</span>
-                        </span>
-                        <button id="btn-move" onclick="toggleMoveMode()" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center justify-center gap-1.5 text-slate-200">
-                            <i class="fa-solid fa-arrows-up-down-left-right"></i> <span id="btn-move-label">Move (up to 3)</span>
-                        </button>
-                    </div>
-
-                    <!-- Vent Strain -->
-                    <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col gap-2">
-                        <span class="text-xs text-slate-400 font-semibold flex justify-between">
-                            <span><i class="fa-solid fa-wind text-cyan-400"></i> Vent Strain</span>
-                            <span class="text-amber-400 font-mono">1 AP</span>
-                        </span>
-                        <button id="btn-vent" onclick="playerAction('vent')" class="py-2 px-3 bg-cyan-950/50 hover:bg-cyan-900/60 active:scale-95 text-xs font-semibold rounded-lg transition border border-cyan-800/60 flex items-center justify-center gap-2 text-cyan-300">
-                            <i class="fa-solid fa-lungs"></i> Vent 10% Strain
-                        </button>
-                    </div>
-
-                    <!-- Slotted Spell 1 -->
-                    <div id="spell-1-card" class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between gap-2 relative overflow-hidden">
+                    <!-- Spell 1 -->
+                    <button id="btn-spell-1" onclick="playerAction('spell', 0)" class="text-left bg-slate-950/80 border border-amber-500/30 hover:border-amber-500/60 p-3 rounded-xl flex flex-col justify-between gap-2 min-h-[120px] active:scale-[0.98] transition disabled:opacity-40">
                         <div>
-                            <div class="flex justify-between items-start mb-1">
-                                <h3 id="spell-1-name" class="font-cinzel text-sm font-bold text-amber-300">Apexite Shard</h3>
-                                <div class="flex gap-1 text-[10px] font-mono">
-                                    <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
-                                    <span id="spell-1-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
-                                </div>
-                            </div>
-                            <p id="spell-1-desc" class="text-[11px] text-slate-400 leading-snug">Deal 4 damage (Range 1-3). If target Strain is 40% or more, deal 7 instead.</p>
+                            <h3 id="spell-1-name" class="font-cinzel text-sm font-bold text-amber-300">Apexite Shard</h3>
+                            <p id="spell-1-desc" class="text-[11px] text-slate-400 leading-snug mt-1">Deal 4 damage (Range 1-3). If target Strain is 40% or more, deal 7 instead.</p>
                         </div>
-                        <button id="btn-spell-1" onclick="playerAction('spell', 0)" class="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-hand-sparkles"></i> Cast Spell 1
-                        </button>
-                    </div>
-
-                    <!-- Slotted Spell 2 -->
-                    <div id="spell-2-card" class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between gap-2 relative overflow-hidden">
-                        <div>
-                            <div class="flex justify-between items-start mb-1">
-                                <h3 id="spell-2-name" class="font-cinzel text-sm font-bold text-amber-300">Red Ink</h3>
-                                <div class="flex gap-1 text-[10px] font-mono">
-                                    <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
-                                    <span id="spell-2-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
-                                </div>
-                            </div>
-                            <p id="spell-2-desc" class="text-[11px] text-slate-400 leading-snug">Deal 3 damage (Range 1-3). Target gains +5% Strain.</p>
+                        <div class="flex gap-1 text-[10px] font-mono">
+                            <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
+                            <span id="spell-1-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
                         </div>
-                        <button id="btn-spell-2" onclick="playerAction('spell', 1)" class="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-hand-sparkles"></i> Cast Spell 2
-                        </button>
-                    </div>
-
-                </div>
-
-                <!-- Relic & Pass Footer Bar -->
-                <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
-                    <!-- Relic Action -->
-                    <div class="flex items-center gap-2">
-                        <button id="btn-relic" onclick="playerAction('relic')" class="px-4 py-2 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                            <i class="fa-solid fa-gem text-purple-400"></i>
-                            <span id="relic-name">Invoke Relic: Shadow-Needle</span>
-                            <span class="text-[10px] bg-purple-900/80 px-1.5 py-0.5 rounded text-purple-200">FREE (1x/Bout)</span>
-                        </button>
-                    </div>
-
-                    <!-- Pass Turn -->
-                    <button id="btn-pass" onclick="playerAction('pass')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center gap-1.5">
-                        <i class="fa-solid fa-forward-step"></i> Pass / End Activation
                     </button>
+
+                    <!-- Spell 2 -->
+                    <button id="btn-spell-2" onclick="playerAction('spell', 1)" class="text-left bg-slate-950/80 border border-amber-500/30 hover:border-amber-500/60 p-3 rounded-xl flex flex-col justify-between gap-2 min-h-[120px] active:scale-[0.98] transition disabled:opacity-40">
+                        <div>
+                            <h3 id="spell-2-name" class="font-cinzel text-sm font-bold text-amber-300">Red Ink</h3>
+                            <p id="spell-2-desc" class="text-[11px] text-slate-400 leading-snug mt-1">Deal 3 damage (Range 1-3). Target gains +5% Strain.</p>
+                        </div>
+                        <div class="flex gap-1 text-[10px] font-mono">
+                            <span class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400">1 AP</span>
+                            <span id="spell-2-cost" class="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-400">2 AN</span>
+                        </div>
+                    </button>
+
+                    <!-- Vent -->
+                    <button id="btn-vent" onclick="playerAction('vent')" class="bg-cyan-950/40 border border-cyan-800/60 hover:border-cyan-500/60 p-3 rounded-xl flex flex-col items-center justify-center gap-1 min-h-[120px] active:scale-[0.98] transition disabled:opacity-40">
+                        <span class="text-cyan-300 text-base font-bold flex items-center gap-2"><i class="fa-solid fa-wind"></i> Vent</span>
+                        <span class="text-[10px] text-cyan-500/80 font-mono">1 AP · -10% Strain</span>
+                    </button>
+
+                    <!-- Pass -->
+                    <button id="btn-pass" onclick="playerAction('pass')" class="bg-slate-800/50 border border-slate-700 hover:border-slate-500 p-3 rounded-xl flex flex-col items-center justify-center gap-1 min-h-[120px] active:scale-[0.98] transition disabled:opacity-40">
+                        <span class="text-slate-200 text-base font-bold flex items-center gap-2"><i class="fa-solid fa-forward-step"></i> Pass</span>
+                        <span class="text-[10px] text-slate-500 font-mono">End activation</span>
+                    </button>
+
                 </div>
+
+                <!-- Relic (once per bout) -->
+                <button id="btn-relic" onclick="playerAction('relic')" class="w-full px-4 py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-40">
+                    <i class="fa-solid fa-gem text-purple-400"></i>
+                    <span id="relic-name">Invoke Relic: Shadow-Needle</span>
+                    <span class="text-[10px] bg-purple-900/80 px-1.5 py-0.5 rounded text-purple-200">FREE (1x/Bout)</span>
+                </button>
             </div>
 
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-h-[250px]">
@@ -719,8 +690,10 @@
                     cell.className = cellClasses;
                     cell.dataset.x = x;
                     cell.dataset.y = y;
-                    if (moveMode && isTarget) {
+                    const canAct = gameState.activeTurn === 'player' && !gameState.isMatchOver;
+                    if ((moveMode && isTarget) || (isPlayerHere && canAct)) {
                         cell.onclick = () => onCellClick(x, y);
+                        if (isPlayerHere && !moveMode) cell.classList.add('cursor-pointer');
                     }
 
                     let avatar = '';
@@ -795,7 +768,7 @@
             document.getElementById('spell-2-desc').textContent = p.spells[1].desc;
 
             document.getElementById('relic-name').textContent = `Invoke Relic: ${p.relic.name}`;
-            document.getElementById('btn-move-label').textContent = `Move (up to ${p.speed})`;
+            document.getElementById('move-hint').textContent = `Move mode: tap a glowing square (up to ${p.speed} squares, 1 AP)`;
 
             // AP badges
             const effAp = p.ap;
@@ -807,7 +780,6 @@
             document.getElementById('turn-order-indicator').textContent = isPlayerTurn ? "Your Turn" : "Opponent Turn";
             document.getElementById('turn-order-indicator').className = `text-xs font-bold font-mono px-2 py-0.5 rounded ${isPlayerTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`;
 
-            document.getElementById('btn-move').disabled = !isPlayerTurn || p.ap < 1;
             document.getElementById('btn-vent').disabled = !isPlayerTurn || p.ap < 1 || p.strain <= 0;
             document.getElementById('btn-spell-1').disabled = !isPlayerTurn || p.ap < 1;
             document.getElementById('btn-spell-2').disabled = !isPlayerTurn || p.ap < 1;
@@ -826,7 +798,13 @@
         function onCellClick(x, y) {
             const p = gameState.player;
             const e = gameState.enemy;
-            if (!moveMode || gameState.activeTurn !== 'player' || gameState.isMatchOver) return;
+            if (gameState.activeTurn !== 'player' || gameState.isMatchOver) return;
+            const isOwnSquare = (x === p.pos.x && y === p.pos.y);
+            if (!moveMode) {
+                if (isOwnSquare) toggleMoveMode(); // tap your fighter to move
+                return;
+            }
+            if (isOwnSquare) { toggleMoveMode(); return; } // tap again to cancel
             if (!canReach(p, e, x, y)) return;
             p.pos = { x, y };
             p.ap -= 1;
