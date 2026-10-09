@@ -761,6 +761,10 @@
             maybeEndPlayerActivation();
         }
 
+        function gainAn(fighter, n) {
+            fighter.an = Math.min(12, fighter.an + n); // AN cap ruled 2026-10-09
+        }
+
         function payAn(fighter, cost, side) {
             if (fighter.an < cost) {
                 const missing = cost - fighter.an;
@@ -817,7 +821,7 @@
                 spellDamage(caster, target, dmg, casterType);
                 logMessage(casterType, `Pyre-Haymaker generated +20% Strain on caster!`);
             } else if (spell.name === "AN Paper Burn") {
-                caster.an += 1;
+                gainAn(caster, 1);
                 caster.strain = Math.max(0, caster.strain - 5);
                 logMessage(casterType, `Burned AN paper: +1 AN gained, -5% Strain vented!`);
             } else if (spell.name === "Bell Ringer's Toll") {
@@ -1085,7 +1089,7 @@
             const p = gameState.player;
             const e = gameState.enemy;
 
-            p.an += p.anPerTick;
+            gainAn(p, p.anPerTick);
             p.ap = Math.max(0, 2 - p.borrowedDebt);
             if (p.borrowedDebt > 0) {
                 logMessage('system', `Borrowed Time debt collected: you start this activation with ${p.ap} AP.`);
@@ -1093,7 +1097,7 @@
             p.borrowedDebt = 0;
             p.relicSuppressed = false;
 
-            e.an += e.anPerTick;
+            gainAn(e, e.anPerTick);
             e.ap = 2;
             e.relicSuppressed = false;
 
