@@ -793,6 +793,13 @@
         }
 
         function executeSpellEffect(spell, caster, target, casterType) {
+            // Soul-crack backlash (ruled 2026-10-09): channeling AN through a cracked
+            // soul (60%+ Strain) tears it wider. Every cast deals 1 damage to the caster.
+            if (caster.strain >= 60) {
+                applyDamage(caster, 1, casterType);
+                logMessage(casterType, `Soul-crack backlash! The cracked soul tears: 1 damage to ${casterType === 'player' ? 'you' : 'the enemy'}.`);
+            }
+
             const distance = chebyshev(caster.pos, target.pos);
 
             if (!inRange(spell, distance)) {
@@ -916,6 +923,17 @@
                 e.strain = Math.max(0, e.strain - 10);
                 e.ap -= 1;
                 logMessage('enemy', `Enemy vented -10% Strain.`);
+                updateUI();
+                setTimeout(aiTakeStep, 500);
+                return;
+            }
+
+            // Soul-crack: casting at 60%+ Strain deals 1 backlash damage, so never
+            // cast when the backlash would be lethal. Vent instead.
+            if (e.strain >= 60 && (e.hp + e.tempHp) <= 1) {
+                e.strain = Math.max(0, e.strain - 10);
+                e.ap -= 1;
+                logMessage('enemy', `Enemy vents -10% Strain rather than crack its soul further.`);
                 updateUI();
                 setTimeout(aiTakeStep, 500);
                 return;
