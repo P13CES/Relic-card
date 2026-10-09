@@ -351,22 +351,25 @@
 
     </main>
 
-    <div id="loadout-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-5 shadow-2xl">
+    <div id="loadout-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 overflow-y-auto">
+        <div class="min-h-full flex p-4">
+            <div class="m-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-5 shadow-2xl">
             <div>
                 <h2 class="font-cinzel text-2xl font-black text-amber-400 tracking-wide">CHOOSE YOUR DUEL LOADOUT</h2>
                 <p class="text-xs text-slate-400 mt-1">Select an archetype to represent you in the Eldora Blood Sport Arena.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="loadout-list">
-                <!-- Dynamically rendered loadout choices -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="loadout-list">
+                    <!-- Dynamically rendered loadout choices -->
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Borrowed Time reaction prompt -->
-    <div id="borrow-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl">
+    <div id="borrow-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 overflow-y-auto">
+        <div class="min-h-full flex p-4">
+            <div class="m-auto bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl">
             <div>
                 <h2 class="font-cinzel text-xl font-black text-amber-400 tracking-wide">BORROWED TIME</h2>
                 <p class="text-xs text-slate-400 mt-1">The opponent casts <span id="borrow-spell-name" class="text-rose-300 font-bold">a spell</span>. Spend 1 AP from your next activation to cast a counter right now. You still pay the counter's AN and Strain costs.</p>
@@ -377,11 +380,13 @@
             <button onclick="declineBorrow()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition border border-slate-700">
                 Let it resolve
             </button>
+            </div>
         </div>
     </div>
 
-    <div id="result-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full flex flex-col items-center text-center gap-4 shadow-2xl">
+    <div id="result-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 overflow-y-auto">
+        <div class="min-h-full flex p-4">
+            <div class="m-auto bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full flex flex-col items-center text-center gap-4 shadow-2xl">
             <div id="result-icon" class="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-3xl">
                 <i class="fa-solid fa-trophy"></i>
             </div>
@@ -395,6 +400,7 @@
             <button onclick="document.getElementById('result-modal').classList.add('hidden'); document.getElementById('loadout-modal').classList.remove('hidden');" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-xs tracking-wider uppercase transition font-cinzel">
                 New Bout
             </button>
+            </div>
         </div>
     </div>
 
@@ -682,7 +688,7 @@
                     const isEnemyHere = (e.pos.x === x && e.pos.y === y);
                     const isTarget = moveMode && canReach(p, e, x, y);
 
-                    let cellClasses = "arena-cell h-11 md:h-13 rounded-lg border flex items-center justify-center relative bg-slate-950/80 ";
+                    let cellClasses = "arena-cell h-11 md:h-14 rounded-lg border flex items-center justify-center relative bg-slate-950/80 ";
                     if (isPlayerHere && isEnemyHere) {
                         cellClasses += "border-amber-500 bg-amber-950/30";
                     } else if (isPlayerHere) {
