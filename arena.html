@@ -189,6 +189,19 @@
         </div>
     </main>
 
+    <!-- Inline Borrowed Time counter bar (replaces the old modal) -->
+    <div id="borrow-bar" class="hidden absolute bottom-0 left-0 right-0 z-30 px-3 pb-3">
+        <div class="bg-slate-900/95 border border-amber-500/50 rounded-xl p-2.5 shadow-2xl">
+            <p class="text-[11px] text-slate-300 mb-2"><span class="text-amber-400 font-bold">BORROWED TIME:</span> enemy casts <span id="borrow-spell-name" class="text-rose-300 font-bold">a spell</span>. Spend 1 AP from your next activation to counter:</p>
+            <div id="borrow-buttons" class="flex gap-2">
+                <!-- Counter spell buttons rendered dynamically -->
+            </div>
+            <button onclick="declineBorrow()" class="mt-2 w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold rounded-lg transition border border-slate-700">
+                Let it resolve
+            </button>
+        </div>
+    </div>
+
     </div><!-- /HUD shell -->
 
     <div id="loadout-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 overflow-y-auto">
@@ -202,24 +215,6 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="loadout-list">
                     <!-- Dynamically rendered loadout choices -->
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Borrowed Time reaction prompt -->
-    <div id="borrow-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 overflow-y-auto">
-        <div class="min-h-full flex p-4">
-            <div class="m-auto bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl">
-            <div>
-                <h2 class="font-cinzel text-xl font-black text-amber-400 tracking-wide">BORROWED TIME: YOUR COUNTER</h2>
-                <p class="text-xs text-slate-400 mt-1">The opponent casts <span id="borrow-spell-name" class="text-rose-300 font-bold">a spell</span>. This is your window to answer it: spend 1 AP from your next activation to cast one of your slotted spells right now as a counter. You still pay its AN and Strain costs. The opponent's spell still resolves afterward.</p>
-            </div>
-            <div id="borrow-buttons" class="flex flex-col gap-2">
-                <!-- Counter spell buttons rendered dynamically -->
-            </div>
-            <button onclick="declineBorrow()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition border border-slate-700">
-                Let it resolve
-            </button>
             </div>
         </div>
     </div>
@@ -548,7 +543,7 @@
             gameState.lastCast = { player: false, enemy: false };
             gameState.prevCast = { player: false, enemy: false };
             moveMode = false;
-            document.getElementById('borrow-modal').classList.add('hidden');
+            document.getElementById('borrow-bar').classList.add('hidden');
 
             ['player', 'enemy'].forEach(side => {
                 const f = gameState[side];
@@ -1214,19 +1209,19 @@
                 if (p.an < s.cost) extraStrain = (s.cost - p.an) * 10;
                 const deadly = (p.strain + extraStrain) >= 100;
                 const b = document.createElement('button');
-                b.className = `w-full py-2 px-3 text-xs font-bold rounded-lg transition border flex items-center justify-center gap-1.5 ${deadly ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' : 'bg-amber-600/20 hover:bg-amber-600/30 border-amber-500/40 text-amber-300'}`;
+                b.className = `flex-1 py-2 px-2 text-[11px] font-bold rounded-lg transition border flex items-center justify-center gap-1 ${deadly ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' : 'bg-amber-600/20 hover:bg-amber-600/30 border-amber-500/40 text-amber-300'}`;
                 b.disabled = deadly;
-                b.innerHTML = `<i class="fa-solid fa-bolt"></i> Counter with ${s.name} (${s.cost} AN${extraStrain > 0 ? `, +${extraStrain}% Strain` : ''})`;
+                b.innerHTML = `<i class="fa-solid fa-bolt"></i> ${s.name} (${s.cost} AN${extraStrain > 0 ? ` +${extraStrain}%` : ''})`;
                 b.onclick = () => doBorrowCounter(idx, done);
                 btns.appendChild(b);
             });
 
             gameState.borrowDecline = () => {
-                document.getElementById('borrow-modal').classList.add('hidden');
+                document.getElementById('borrow-bar').classList.add('hidden');
                 gameState.borrowDecline = null;
                 done();
             };
-            document.getElementById('borrow-modal').classList.remove('hidden');
+            document.getElementById('borrow-bar').classList.remove('hidden');
         }
 
         function declineBorrow() {
@@ -1237,7 +1232,7 @@
             const p = gameState.player;
             const e = gameState.enemy;
             const spell = p.spells[idx];
-            document.getElementById('borrow-modal').classList.add('hidden');
+            document.getElementById('borrow-bar').classList.add('hidden');
             gameState.borrowDecline = null;
 
             payAn(p, spell.cost, 'player');
@@ -1368,7 +1363,7 @@
         function triggerMatchEnd(title, desc, isWin) {
             gameState.isMatchOver = true;
             moveMode = false;
-            document.getElementById('borrow-modal').classList.add('hidden');
+            document.getElementById('borrow-bar').classList.add('hidden');
             const modal = document.getElementById('result-modal');
             document.getElementById('result-title').textContent = title;
             document.getElementById('result-desc').textContent = desc;
