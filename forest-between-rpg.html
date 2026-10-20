@@ -32,6 +32,7 @@
     <div class="tbtn" id="dUp">&#9650;</div><div class="tbtn" id="dLf">&#9664;</div>
     <div class="tbtn" id="dRt">&#9654;</div><div class="tbtn" id="dDn">&#9660;</div>
     <div class="tbtn" id="bB">B</div><div class="tbtn" id="bA">A</div>
+    <div class="tbtn" id="bM" style="right:14px;top:8px;width:46px;height:34px;font-size:15px;">&#9836;</div>
   </div>
   <div id="titlecard">
     <h1>THE FOREST BETWEEN</h1>
@@ -60,6 +61,7 @@ addEventListener("keydown", e => {
   keys[e.key] = true;
   if (e.key === "z" || e.key === "Z" || e.key === " " || e.key === "Enter") pressedA = true;
   if (e.key === "x" || e.key === "X") pressedB = true;
+  if (e.key === "m" || e.key === "M") muted = !muted;
 });
 addEventListener("keyup", e => { keys[e.key] = false; });
 function dirHeld() {
@@ -391,6 +393,7 @@ function startDialogue(lines, onDone) {
 }
 function advanceDialogue() {
   if (!dlg) return;
+  sfx("blip");
   const pageText = dlg.pages[dlg.page];
   if (dlg.chars < pageText.length) { dlg.chars = pageText.length; return; }
   dlg.page++; dlg.chars = 0;
@@ -434,7 +437,7 @@ function tryInteract() {
   if (curMap === "chapel") {
     if (npc && npc.id === "shelley") {
       if (!F.greeted) { F.greeted = true; startDialogue(D.greet, () => goMap("yard", 6, 10)); return; }
-      if (F.meat && !F.job) { F.job = true; startDialogue(D.job); return; }
+      if (F.meat && !F.job) { F.job = true; startDialogue(D.job, () => saveGame()); return; }
       startDialogue([["SHELLEY","The old cut, love. First light. We will be listening for the bell."]]); return;
     }
     if (t === "=") { startDialogue(F.meat ? D.pouch : D.candle); return; }
@@ -445,7 +448,7 @@ function tryInteract() {
   if (curMap === "yard") {
     if (npc && npc.id === "moffat") { startDialogue(D.moffat); return; }
     if (npc && npc.id === "shelley") {
-      if (!F.meat) { F.meat = true; startDialogue(D.meat, () => goMap("chapel", 10, 11)); return; }
+      if (!F.meat) { F.meat = true; startDialogue(D.meat, () => { goMap("chapel", 10, 11); saveGame(); }); return; }
       startDialogue([["SHELLEY","Inside, love. The table talk."]]); return;
     }
   }
@@ -486,6 +489,7 @@ function updateWorld() {
   player.x = nx; player.y = ny; player.moving = true; player.mx = dv[0]; player.py0 = 0; player.my = dv[1];
 }
 function onStep() {
+  sfx("step");
   const t = tileAt(curMap, player.x, player.y);
   // doors
   if (curMap === "road" && player.x === 10 && player.y === 0) { goMap("chapel", 10, 16); return; }
@@ -494,7 +498,7 @@ function onStep() {
   if (curMap === "yard" && player.x === 0 && player.y === 9) { goMap("chapel", 18, 10); return; }
   // toll beat on the road
   if (curMap === "road" && !F.toll && player.y <= 8) {
-    F.toll = true; tollTimer = 50;
+    F.toll = true; tollTimer = 50; sfx("bell");
     startDialogue(D.toll);
     return;
   }
@@ -511,14 +515,27 @@ const EYES = [[1,1],[17,1],[1,12],[17,3],[2,16],[15,14]];
 function drawWorld() {
   ctx.clearRect(0,0,160,144);
   const map = MAPS[curMap];
+  const vis = computeVis();
+  if (!seenByMap[curMap]) seenByMap[curMap] = new Set();
+  const memory = seenByMap[curMap];
   for (let y=0; y<18; y++) for (let x=0; x<20; x++) {
+    const key = x + "," + y;
     const ch = map[y][x];
     const variant = ((x*7+y*13)%3)===0;
-    drawTile(ch, x*8, y*8, frame, variant);
+    if (vis.has(key)) {
+      memory.add(key);
+      drawTile(ch, x*8, y*8, frame, variant);
+    } else if (memory.has(key)) {
+      drawTile(ch, x*8, y*8, frame, variant);
+      ctx.fillStyle = "rgba(15,56,15,0.62)";
+      ctx.fillRect(x*8, y*8, 8, 8);
+    } else {
+      rect(x*8, y*8, 8, 8, PAL[0]);
+    }
   }
-  if (curMap === "road") for (const [ex,ey] of EYES) drawEyes(ex*8, ey*8, tollTimer>0 ? 0 : frame);
-  // npcs
-  for (const n of (NPCS[curMap]||[])) spr(n.spr, n.x*8, n.y*8 - 4, PAL_SPR);
+  if (curMap === "road") for (const [ex,ey] of EYES) if (vis.has(ex + "," + ey)) drawEyes(ex*8, ey*8, tollTimer>0 ? 0 : frame);
+  // npcs only when visible
+  for (const n of (NPCS[curMap]||[])) if (vis.has(n.x + "," + n.y)) spr(n.spr, n.x*8, n.y*8 - 4, PAL_SPR);
   // player (slight bob while moving)
   const bob = player.moving && Math.floor(frame/4)%2===0 ? -1 : 0;
   spr(SPR_TRAVELER, player.px, player.py - 4 + bob, PAL_SPR);
@@ -528,7 +545,8 @@ function drawWorld() {
   // map label
   const label = { road:"THE FOREST ROAD", chapel:"SHELLEY'S CHAPEL", yard:"THE SIDE YARD", cut:"THE OLD CUT" }[curMap];
   rect(0,0,160,10,PAL[0]); text(label, 4, 1, PAL[3]);
-  if (!F.job && curMap!=="cut") text("", 0, 0, PAL[0]);
+  if (muted) text("MUTED", 126, 1, PAL[1]);
+  if (savedFlash > 0) { text("SAVED", 128, 134, PAL[2]); savedFlash--; }
 }
 </script>
 <script>
@@ -574,7 +592,7 @@ function updateExam() {
     }
     if (pressedB) { pressedB = false; exam.name = exam.name.slice(0, -1); }
     if (pressedA) {
-      pressedA = false;
+      pressedA = false; sfx("blip");
       if (exam.cur < 26 && exam.name.length < 8) exam.name += LETTERS[exam.cur];
       else if (exam.cur === 26) exam.name = exam.name.slice(0, -1); // DEL
       else if (exam.cur === 27) { exam.step = "q"; } // OK
@@ -587,8 +605,8 @@ function updateExam() {
     }
     if (pressedA) {
       pressedA = false;
-      exam.ans.push(exam.cur); exam.cur = 0; exam.qi++;
-      if (exam.qi >= EXAM_QS.length) { examAffinity(); exam.step = "issued"; }
+      exam.ans.push(exam.cur); exam.cur = 0; exam.qi++; sfx("confirm");
+      if (exam.qi >= EXAM_QS.length) { examAffinity(); exam.step = "issued"; sfx("issued"); }
     }
   } else if (exam.step === "issued") {
     if (pressedA) { pressedA = false; exam.done = true; beginStory(); }
@@ -643,7 +661,7 @@ function beginStory() {
   mode = "world"; curMap = "road";
   player.x = 10; player.y = 16; player.px = 80; player.py = 128; player.dir = "up"; player.moving = false;
   F.intro = true;
-  startDialogue(D.intro);
+  startDialogue(D.intro, () => saveGame());
 }
 </script>
 <script>
@@ -692,13 +710,15 @@ function dmgPlayer(n, label, addStrain) {
   B.php = Math.max(0, B.php - n);
   if (addStrain) B.strain = Math.min(100, B.strain + addStrain);
   bmsg(label + " " + n + " damage. HP " + B.php + "/25.");
-  if (B.php <= 0) B.phase = "lost";
+  sfx("thud");
+  if (B.php <= 0) { B.phase = "lost"; sfx("lose"); }
 }
 function checkWin() {
   if (B.enemies.every(e => e.hp <= 0)) {
     B.phase = "won";
-    F.won = true;
+    F.won = true; sfx("win");
     playerCard.hp = B.php; playerCard.strain = B.strain;
+    saveGame();
     return true;
   }
   return false;
@@ -726,17 +746,24 @@ function nextStep() {
   B.stepTimer = 55;
 }
 function moveToward(e, target) {
-  for (let s=0; s<e.speed; s++) {
+  // rot.js A* (topology 4). Path points run from the enemy to the target.
+  const path = [];
+  try {
+    new ROTAStar(target.x, target.y, (x,y) => !cellBlocked(x, y, e), { topology: 4 })
+      .compute(e.x, e.y, (x,y) => path.push([x,y]));
+  } catch(err) { path.length = 0; }
+  if (path.length < 2) { // fallback: one greedy step
     const dx = Math.sign(target.x - e.x), dy = Math.sign(target.y - e.y);
-    const tries = [];
-    if (Math.abs(target.x-e.x) >= Math.abs(target.y-e.y)) tries.push([dx,0],[0,dy]); else tries.push([0,dy],[dx,0]);
-    let moved = false;
-    for (const [mx,my] of tries) {
-      if (mx===0 && my===0) continue;
-      const nx = e.x+mx, ny = e.y+my;
-      if (!cellBlocked(nx, ny, e)) { e.x = nx; e.y = ny; moved = true; break; }
-    }
-    if (!moved) break;
+    if (!cellBlocked(e.x + dx, e.y, e)) e.x += dx;
+    else if (!cellBlocked(e.x, e.y + dy, e)) e.y += dy;
+    return;
+  }
+  let steps = 0;
+  for (let i = 1; i < path.length && steps < e.speed; i++) {
+    const nx = path[i][0], ny = path[i][1];
+    if (nx === target.x && ny === target.y) break;              // never step onto the player
+    if (e.kind === "bishop" && mdist({x:nx, y:ny}, target) <= 2) break; // bishop keeps spacing
+    e.x = nx; e.y = ny; steps++;
   }
 }
 function enemyAct(e) {
@@ -763,6 +790,7 @@ function resolveBorrow(counter) {
   const e = B.pendingCast; B.pendingCast = null; B.borrowing = false; B.paused = false;
   e.an -= 1; e.strain = Math.min(100, e.strain + 10);
   if (counter) {
+    sfx("counter");
     B.borrowDebt = true;
     bmsg("Borrowed! The Smite dies midair. The Bishop still pays AN and Strain for the casting.");
   } else {
@@ -792,7 +820,7 @@ function doMenu(id) {
     if (!t) { bmsg("No target in range 1-" + sp.range + "."); return; }
     B.cx = t.x; B.cy = t.y; B.phase = "target";
   }
-  else if (id === "vent") { B.ap -= 1; B.strain = Math.max(0, B.strain - 15); bmsg("You vent. Strain " + B.strain + "%."); afterAction(); }
+  else if (id === "vent") { B.ap -= 1; B.strain = Math.max(0, B.strain - 15); sfx("vent"); bmsg("You vent. Strain " + B.strain + "%."); afterAction(); }
   else if (id === "relic") {
     if (B.relicUsed) { bmsg("The candle is spent for this bout."); return; }
     B.relicUsed = true; B.php = Math.min(25, B.php + 6); B.strain = Math.max(0, B.strain - 10);
@@ -817,7 +845,7 @@ function doCastAt(cx, cy) {
   B.ap -= 1; B.an -= sp.an; B.strain = Math.min(100, B.strain + sp.self);
   let dmg = sp.dmg + esc() + (sp.bonus && e.strain >= 40 ? sp.bonus : 0);
   if (preStrain >= 60) dmg = Math.max(1, dmg - 1);
-  e.hp = Math.max(0, e.hp - dmg);
+  e.hp = Math.max(0, e.hp - dmg); sfx("hit");
   if (sp.tstrain) e.strain = Math.min(100, e.strain + sp.tstrain);
   bmsg(sp.name + " hits the " + e.name + " for " + dmg + ". " + (e.hp<=0 ? "It falls!" : e.name + " HP " + e.hp + "."));
   B.phase = "menu"; afterAction();
@@ -917,6 +945,693 @@ function drawBattle() {
 
 </script>
 <script>
+/*
+
+ZzFX - Zuper Zmall Zound Zynth v1.4.0 by Frank Force
+https://github.com/KilledByAPixel/ZzFX
+
+ZzFX Features
+
+- Tiny synth engine with 20 controllable parameters.
+- Play sounds via code, no need for sound assed files!
+- Compatible with most modern web browsers.
+- Small code footprint, the micro version is under 1 kilobyte.
+- Can produce a huge variety of sound effect types.
+- Sounds can be played with a short call. zzfx(...[,,,,.1,,,,9])
+- A small bit of randomness appied to sounds when played.
+- Use ZZFX.GetNote to get frequencies on a standard diatonic scale.
+- Sounds can be saved out as wav files for offline playback.
+- No additional libraries or dependencies are required.
+
+*/
+/*
+
+  ZzFX MIT License
+  
+  Copyright (c) 2019 - Frank Force
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+  
+*/
+
+'use strict';
+
+// play a zzfx sound
+function zzfx(...parameters) { return ZZFX.play(...parameters) }
+
+///////////////////////////////////////////////////////////////////////////////
+// ZZFX API for playing sounds
+const ZZFX =
+{
+    // master volume scale
+    volume: .3,
+    
+    // sample rate for audio
+    sampleRate: 44100,
+    
+    // create shared audio context
+    audioContext: new AudioContext,
+
+    // play a sound from zzfx paramerters
+    play: function(...parameters)
+    {
+        // build samples and start sound
+        return this.playSamples([this.buildSamples(...parameters)]);
+    },
+
+    // play an array of samples
+    playSamples: function(sampleChannels, volumeScale=1, rate=1, pan=0, loop=false)
+    {
+        // create buffer and source
+        const channelCount = sampleChannels.length;
+        const sampleLength = sampleChannels[0].length;
+        const buffer = this.audioContext.createBuffer(channelCount, sampleLength, this.sampleRate);
+        const source = this.audioContext.createBufferSource();
+
+        // copy samples to buffer and setup source
+        sampleChannels.forEach((c,i)=> buffer.getChannelData(i).set(c));
+        source.buffer = buffer;
+        source.playbackRate.value = rate;
+        source.loop = loop;
+
+        // create and connect gain node
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = this.volume*volumeScale;
+        gainNode.connect(this.audioContext.destination);
+        source.gainNode = gainNode; // expose so callers can adjust or fade
+
+        // connect source to stereo panner and gain
+        const pannerNode = new StereoPannerNode(this.audioContext, {'pan':pan});
+        source.connect(pannerNode).connect(gainNode);
+        source.start();
+
+        // return sound
+        return source;
+    },
+
+    // build an array of samples
+    buildSamples: function
+    (
+        volume = 1, 
+        randomness = .05,
+        frequency = 220,
+        attack = 0,
+        sustain = 0,
+        release = .1,
+        shape = 0,
+        shapeCurve = 1,
+        slide = 0, 
+        deltaSlide = 0, 
+        pitchJump = 0, 
+        pitchJumpTime = 0, 
+        repeatTime = 0, 
+        noise = 0,
+        modulation = 0,
+        bitCrush = 0,
+        delay = 0,
+        sustainVolume = 1,
+        decay = 0,
+        tremolo = 0,
+        filter = 0
+    )
+    {
+        // init parameters
+        let sampleRate = this.sampleRate,
+            PI2 = Math.PI*2, 
+            abs = Math.abs, 
+            sign = v => v<0?-1:1, 
+            startSlide = slide *= 500 * PI2 / sampleRate / sampleRate,
+            startFrequency = frequency *= 
+                (1 + randomness*2*Math.random() - randomness) * PI2 / sampleRate,
+            modOffset = 0, // modulation offset  
+            repeat = 0,    // repeat offset
+            crush = 0,     // bit crush offset
+            jump = 1,      // pitch jump timer
+            length,        // sample length
+            b,             // sample buffer
+            t = 0,         // sample time
+            i = 0,         // sample index 
+            s = 0,         // sample value
+        f,             // wave frequency
+
+        // biquad LP/HP filter
+        quality = 2, w = PI2 * abs(filter) * 2 / sampleRate,
+        cos = Math.cos(w), alpha = Math.sin(w) / 2 / quality,
+        a0 = 1 + alpha, a1 = -2*cos / a0, a2 = (1 - alpha) / a0,
+        b0 = (1 + sign(filter) * cos) / 2 / a0, 
+        b1 = -(sign(filter) + cos) / a0, b2 = b0,
+        x2 = 0, x1 = 0, y2 = 0, y1 = 0;
+
+        // scale by sample rate
+        const minAttack = 9; // prevent pop if attack is 0
+        attack = attack * sampleRate || minAttack;
+        decay *= sampleRate;
+        sustain *= sampleRate;
+        release *= sampleRate;
+        delay *= sampleRate;
+        deltaSlide *= 500 * PI2 / sampleRate**3;
+        modulation *= PI2 / sampleRate;
+        pitchJump *= PI2 / sampleRate;
+        pitchJumpTime *= sampleRate;
+        repeatTime = repeatTime * sampleRate | 0;
+
+        // allocate the full sample buffer up front, much faster than growing an array
+        length = attack + decay + sustain + release + delay | 0;
+        b = new Float32Array(length > 0 ? length : 0);
+
+        // generate waveform
+        for(; i < length; b[i++] = s * volume)                 // sample
+        {
+            if (!(++crush%(bitCrush*100|0)))                   // bit crush
+            {
+                s = shape? shape>1? shape>2? shape>3? shape>4? // wave shape
+                    (t/PI2%1 < shapeCurve/2? 1 : -1) :         // 5 square duty
+                    Math.sin(t**3) :                           // 4 noise
+                    Math.max(Math.min(Math.tan(t),1),-1):      // 3 tan
+                    1-(2*t/PI2%2+2)%2:                         // 2 saw
+                    1-4*abs(Math.round(t/PI2)-t/PI2):          // 1 triangle
+                    Math.sin(t);                               // 0 sin
+
+                s = (repeatTime ?
+                        1 - tremolo + tremolo*Math.sin(PI2*i/repeatTime) // tremolo
+                        : 1) *
+                    (shape>4?s:sign(s)*abs(s)**shapeCurve) * // shape curve
+                    (i < attack ? i/attack :                 // attack
+                    i < attack + decay ?                     // decay
+                    1-((i-attack)/decay)*(1-sustainVolume) : // decay falloff
+                    i < attack  + decay + sustain ?          // sustain
+                    sustainVolume :                          // sustain volume
+                    i < length - delay ?                     // release
+                    (length - i - delay)/release *           // release falloff
+                    sustainVolume :                          // release volume
+                    0);                                      // post release
+
+                s = delay ? s/2 + (delay > i ? 0 :           // delay
+                    (i<length-delay? 1 : (length-i)/delay) * // release delay 
+                    b[i-delay|0]/2/volume) : s;              // sample delay
+
+                if (filter)                                  // apply filter
+                    s = y1 = b2*x2 + b1*(x2=x1) + b0*(x1=s) - a2*y2 - a1*(y2=y1);
+            }
+
+            f = (frequency += slide += deltaSlide) *// frequency
+                Math.cos(modulation*modOffset++);   // modulation
+            t += f + f*noise*(i*i*PI2%2-1);         // noise
+
+            if (jump && ++jump > pitchJumpTime)     // pitch jump
+            { 
+                frequency += pitchJump;             // apply pitch jump
+                startFrequency += pitchJump;        // also apply to start
+                jump = 0;                           // stop pitch jump time
+            } 
+
+            if (repeatTime && !(++repeat % repeatTime)) // repeat
+            { 
+                frequency = startFrequency;   // reset frequency
+                slide = startSlide;           // reset slide
+                jump ||= 1;                   // reset pitch jump time
+            }
+        }
+
+        return b; // return sample buffer
+    },
+
+    // get frequency of a musical note on a diatonic scale
+    getNote: function(semitoneOffset=0, rootNoteFrequency=440)
+    {
+        return rootNoteFrequency * 2**(semitoneOffset/12);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Sound object that can precache and play ZZFX sounds
+class ZZFXSound
+{
+    constructor(zzfxSound=[])
+    {
+        this.zzfxSound = zzfxSound;
+        
+        // extract randomness parameter from zzfxSound
+        this.randomness = zzfxSound[1] != undefined ? zzfxSound[1] : .05;
+        zzfxSound[1] = 0; // generate without frequency randomness
+        
+        // cache the sound samples
+        this.samples = ZZFX.buildSamples(...zzfxSound);
+    }
+
+    play(volume=1, pitch=1, randomnessScale=1, pan=0, loop=false)
+    {
+        if (!this.samples) return;
+
+        // play the sound
+        const playbackRate = pitch + pitch * this.randomness*randomnessScale*(Math.random()*2-1);
+        this.source = ZZFX.playSamples([this.samples], volume, playbackRate, pan, loop);
+        return this.source;
+    }
+}
+
+</script>
+<script>
+"use strict";
+const ROTDIRS = {
+    4: [[0, -1], [1, 0], [0, 1], [-1, 0]],
+    8: [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]],
+    6: [[-1, -1], [1, -1], [2, 0], [1, 1], [-1, 1], [-2, 0]]
+};
+;
+;
+class ROTFOVBase {
+    /**
+     * @class Abstract FOV algorithm
+     * @param {function} lightPassesCallback Does the light pass through x,y?
+     * @param {object} [options]
+     * @param {int} [options.topology=8] 4/6/8
+     */
+    constructor(lightPassesCallback, options = {}) {
+        this._lightPasses = lightPassesCallback;
+        this._options = Object.assign({ topology: 8 }, options);
+    }
+    /**
+     * Return all neighbors in a concentric ring
+     * @param {int} cx center-x
+     * @param {int} cy center-y
+     * @param {int} r range
+     */
+    _getCircle(cx, cy, r) {
+        let result = [];
+        let dirs, countFactor, startOffset;
+        switch (this._options.topology) {
+            case 4:
+                countFactor = 1;
+                startOffset = [0, 1];
+                dirs = [
+                    ROTDIRS[8][7],
+                    ROTDIRS[8][1],
+                    ROTDIRS[8][3],
+                    ROTDIRS[8][5]
+                ];
+                break;
+            case 6:
+                dirs = ROTDIRS[6];
+                countFactor = 1;
+                startOffset = [-1, 1];
+                break;
+            case 8:
+                dirs = ROTDIRS[4];
+                countFactor = 2;
+                startOffset = [-1, 1];
+                break;
+            default:
+                throw new Error("Incorrect topology for FOV computation");
+                break;
+        }
+        /* starting neighbor */
+        let x = cx + startOffset[0] * r;
+        let y = cy + startOffset[1] * r;
+        /* circle */
+        for (let i = 0; i < dirs.length; i++) {
+            for (let j = 0; j < r * countFactor; j++) {
+                result.push([x, y]);
+                x += dirs[i][0];
+                y += dirs[i][1];
+            }
+        }
+        return result;
+    }
+}
+
+/**
+ * @class Precise shadowcasting algorithm
+ * @augments ROT.FOV
+ */
+class ROTFOV extends ROTFOVBase {
+    compute(x, y, R, callback) {
+        /* this place is always visible */
+        callback(x, y, 0, 1);
+        /* standing in a dark place. FIXME is this a good idea?  */
+        if (!this._lightPasses(x, y)) {
+            return;
+        }
+        /* list of all shadows */
+        let SHADOWS = [];
+        let cx, cy, blocks, A1, A2, visibility;
+        /* analyze surrounding cells in concentric rings, starting from the center */
+        for (let r = 1; r <= R; r++) {
+            let neighbors = this._getCircle(x, y, r);
+            let neighborCount = neighbors.length;
+            for (let i = 0; i < neighborCount; i++) {
+                cx = neighbors[i][0];
+                cy = neighbors[i][1];
+                /* shift half-an-angle backwards to maintain consistency of 0-th cells */
+                A1 = [i ? 2 * i - 1 : 2 * neighborCount - 1, 2 * neighborCount];
+                A2 = [2 * i + 1, 2 * neighborCount];
+                blocks = !this._lightPasses(cx, cy);
+                visibility = this._checkVisibility(A1, A2, blocks, SHADOWS);
+                if (visibility) {
+                    callback(cx, cy, r, visibility);
+                }
+                if (SHADOWS.length == 2 && SHADOWS[0][0] == 0 && SHADOWS[1][0] == SHADOWS[1][1]) {
+                    return;
+                } /* cutoff? */
+            } /* for all cells in this ring */
+        } /* for all rings */
+    }
+    /**
+     * @param {int[2]} A1 arc start
+     * @param {int[2]} A2 arc end
+     * @param {bool} blocks Does current arc block visibility?
+     * @param {int[][]} SHADOWS list of active shadows
+     */
+    _checkVisibility(A1, A2, blocks, SHADOWS) {
+        if (A1[0] > A2[0]) { /* split into two sub-arcs */
+            let v1 = this._checkVisibility(A1, [A1[1], A1[1]], blocks, SHADOWS);
+            let v2 = this._checkVisibility([0, 1], A2, blocks, SHADOWS);
+            return (v1 + v2) / 2;
+        }
+        /* index1: first shadow >= A1 */
+        let index1 = 0, edge1 = false;
+        while (index1 < SHADOWS.length) {
+            let old = SHADOWS[index1];
+            let diff = old[0] * A1[1] - A1[0] * old[1];
+            if (diff >= 0) { /* old >= A1 */
+                if (diff == 0 && !(index1 % 2)) {
+                    edge1 = true;
+                }
+                break;
+            }
+            index1++;
+        }
+        /* index2: last shadow <= A2 */
+        let index2 = SHADOWS.length, edge2 = false;
+        while (index2--) {
+            let old = SHADOWS[index2];
+            let diff = A2[0] * old[1] - old[0] * A2[1];
+            if (diff >= 0) { /* old <= A2 */
+                if (diff == 0 && (index2 % 2)) {
+                    edge2 = true;
+                }
+                break;
+            }
+        }
+        let visible = true;
+        if (index1 == index2 && (edge1 || edge2)) { /* subset of existing shadow, one of the edges match */
+            visible = false;
+        }
+        else if (edge1 && edge2 && index1 + 1 == index2 && (index2 % 2)) { /* completely equivalent with existing shadow */
+            visible = false;
+        }
+        else if (index1 > index2 && (index1 % 2)) { /* subset of existing shadow, not touching */
+            visible = false;
+        }
+        if (!visible) {
+            return 0;
+        } /* fast case: not visible */
+        let visibleLength;
+        /* compute the length of visible arc, adjust list of shadows (if blocking) */
+        let remove = index2 - index1 + 1;
+        if (remove % 2) {
+            if (index1 % 2) { /* first edge within existing shadow, second outside */
+                let P = SHADOWS[index1];
+                visibleLength = (A2[0] * P[1] - P[0] * A2[1]) / (P[1] * A2[1]);
+                if (blocks) {
+                    SHADOWS.splice(index1, remove, A2);
+                }
+            }
+            else { /* second edge within existing shadow, first outside */
+                let P = SHADOWS[index2];
+                visibleLength = (P[0] * A1[1] - A1[0] * P[1]) / (A1[1] * P[1]);
+                if (blocks) {
+                    SHADOWS.splice(index1, remove, A1);
+                }
+            }
+        }
+        else {
+            if (index1 % 2) { /* both edges within existing shadows */
+                let P1 = SHADOWS[index1];
+                let P2 = SHADOWS[index2];
+                visibleLength = (P2[0] * P1[1] - P1[0] * P2[1]) / (P1[1] * P2[1]);
+                if (blocks) {
+                    SHADOWS.splice(index1, remove);
+                }
+            }
+            else { /* both edges outside existing shadows */
+                if (blocks) {
+                    SHADOWS.splice(index1, remove, A1, A2);
+                }
+                return 1; /* whole arc visible! */
+            }
+        }
+        let arcLength = (A2[0] * A1[1] - A1[0] * A2[1]) / (A1[1] * A2[1]);
+        return visibleLength / arcLength;
+    }
+}
+
+/**
+ * @class Abstract pathfinder
+ * @param {int} toX Target X coord
+ * @param {int} toY Target Y coord
+ * @param {function} passableCallback Callback to determine map passability
+ * @param {object} [options]
+ * @param {int} [options.topology=8]
+ */
+class ROTPath {
+    constructor(toX, toY, passableCallback, options = {}) {
+        this._toX = toX;
+        this._toY = toY;
+        this._passableCallback = passableCallback;
+        this._options = Object.assign({
+            topology: 8
+        }, options);
+        this._dirs = ROTDIRS[this._options.topology];
+        if (this._options.topology == 8) { /* reorder dirs for more aesthetic result (vertical/horizontal first) */
+            this._dirs = [
+                this._dirs[0],
+                this._dirs[2],
+                this._dirs[4],
+                this._dirs[6],
+                this._dirs[1],
+                this._dirs[3],
+                this._dirs[5],
+                this._dirs[7]
+            ];
+        }
+    }
+    _getNeighbors(cx, cy) {
+        let result = [];
+        for (let i = 0; i < this._dirs.length; i++) {
+            let dir = this._dirs[i];
+            let x = cx + dir[0];
+            let y = cy + dir[1];
+            if (!this._passableCallback(x, y)) {
+                continue;
+            }
+            result.push([x, y]);
+        }
+        return result;
+    }
+}
+
+/**
+ * @class Simplified A* algorithm: all edges have a value of 1
+ * @augments ROT.Path
+ * @see ROT.Path
+ */
+class ROTAStar extends ROTPath {
+    constructor(toX, toY, passableCallback, options = {}) {
+        super(toX, toY, passableCallback, options);
+        this._todo = [];
+        this._done = {};
+    }
+    /**
+     * Compute a path from a given point
+     * @see ROT.Path#compute
+     */
+    compute(fromX, fromY, callback) {
+        this._todo = [];
+        this._done = {};
+        this._fromX = fromX;
+        this._fromY = fromY;
+        this._add(this._toX, this._toY, null);
+        while (this._todo.length) {
+            let item = this._todo.shift();
+            let id = item.x + "," + item.y;
+            if (id in this._done) {
+                continue;
+            }
+            this._done[id] = item;
+            if (item.x == fromX && item.y == fromY) {
+                break;
+            }
+            let neighbors = this._getNeighbors(item.x, item.y);
+            for (let i = 0; i < neighbors.length; i++) {
+                let neighbor = neighbors[i];
+                let x = neighbor[0];
+                let y = neighbor[1];
+                let id = x + "," + y;
+                if (id in this._done) {
+                    continue;
+                }
+                this._add(x, y, item);
+            }
+        }
+        let item = this._done[fromX + "," + fromY];
+        if (!item) {
+            return;
+        }
+        while (item) {
+            callback(item.x, item.y);
+            item = item.prev;
+        }
+    }
+    _add(x, y, prev) {
+        let h = this._distance(x, y);
+        let obj = {
+            x: x,
+            y: y,
+            prev: prev,
+            g: (prev ? prev.g + 1 : 0),
+            h: h
+        };
+        /* insert into priority queue */
+        let f = obj.g + obj.h;
+        for (let i = 0; i < this._todo.length; i++) {
+            let item = this._todo[i];
+            let itemF = item.g + item.h;
+            if (f < itemF || (f == itemF && h < item.h)) {
+                this._todo.splice(i, 0, obj);
+                return;
+            }
+        }
+        this._todo.push(obj);
+    }
+    _distance(x, y) {
+        switch (this._options.topology) {
+            case 4:
+                return (Math.abs(x - this._fromX) + Math.abs(y - this._fromY));
+                break;
+            case 6:
+                let dx = Math.abs(x - this._fromX);
+                let dy = Math.abs(y - this._fromY);
+                return dy + Math.max(0, (dx - dy) / 2);
+                break;
+            case 8:
+                return Math.max(Math.abs(x - this._fromX), Math.abs(y - this._fromY));
+                break;
+        }
+    }
+}
+
+
+// ===================== SOUND (ZzFX by Frank Force, MIT) =====================
+let audioReady = false, muted = false;
+function initAudio() {
+  try {
+    if (typeof ZZFX !== "undefined" && ZZFX.audioContext && ZZFX.audioContext.resume) ZZFX.audioContext.resume();
+    if (!audioReady) { zzfx(...[.001,0,440,0,.01,.01,0]); audioReady = true; }
+  } catch(e) {}
+}
+function sfx(name) {
+  if (!audioReady || muted) return;
+  try {
+    if (name === "blip") zzfx(...[.4,.05,700,0,.03,.06,1]);
+    else if (name === "step") zzfx(...[.07,.3,120,0,.02,.03,4]);
+    else if (name === "bell") { zzfx(...[.8,0,392,0,.4,1.6,0,1]); zzfx(...[.32,0,587.33,0,.3,1.2,0,1]); }
+    else if (name === "hit") zzfx(...[.6,.1,170,0,.07,.14,2,1,-60]);
+    else if (name === "thud") zzfx(...[.7,.15,110,0,.1,.2,2,1,-40]);
+    else if (name === "vent") zzfx(...[.35,.1,280,0,.18,.3,0,1,220]);
+    else if (name === "counter") zzfx(...[.5,.02,880,0,.05,.12,1]);
+    else if (name === "confirm") { zzfx(...[.45,.02,523,0,.05,.1,1]); setTimeout(() => { try { zzfx(...[.45,.02,784,0,.06,.14,1]); } catch(e){} }, 90); }
+    else if (name === "win") { [523.25,659.25,783.99].forEach((f,i) => setTimeout(() => { try { zzfx(...[.5,.02,f,0,.12,.25,1]); } catch(e){} }, i*130)); }
+    else if (name === "lose") zzfx(...[.6,.05,220,0,.3,.6,1,1,-120]);
+    else if (name === "issued") { [440,554.37,659.25,880].forEach((f,i) => setTimeout(() => { try { zzfx(...[.45,.02,f,0,.1,.2,1]); } catch(e){} }, i*110)); }
+  } catch(e) {}
+}
+// tiny music sequencer: soft zzfx tones, pattern per place
+const MUSPAT = {
+  road:   { n:[220,261.63,329.63,392,329.63,261.63,246.94,196], t:44, sh:0 },
+  chapel: { n:[164.81,196,220,196,164.81,130.81], t:60, sh:0 },
+  battle: { n:[110,110,130.81,98,110,110,164.81,146.83], t:20, sh:1 }
+};
+let musIdx = 0;
+function musicTick() {
+  if (!audioReady || muted) return;
+  let key = null;
+  if (mode === "battle") key = "battle";
+  else if (mode === "exam") key = "chapel";
+  else if (mode === "world" || mode === "dlg" || mode === "cardview") key = (curMap === "chapel") ? "chapel" : "road";
+  if (!key) return;
+  const p = MUSPAT[key];
+  if (frame % p.t === 0) {
+    const f = p.n[musIdx % p.n.length]; musIdx++;
+    try { zzfx(...[.13,.02,f,.03,.22,.45,p.sh,1]); } catch(e) {}
+  }
+}
+
+// ===================== SAVE SYSTEM (localStorage) =====================
+const SAVE_KEY = "tfb-save-v1";
+let savedFlash = 0;
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ card: playerCard, F: F, map: curMap, x: player.x, y: player.y }));
+    savedFlash = 100;
+  } catch(e) {}
+}
+function loadSave() { try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; } catch(e) { return null; } }
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
+function restoreSave() {
+  const sv = loadSave();
+  if (!sv) { initExam(); return; }
+  Object.assign(playerCard, sv.card || {});
+  Object.assign(F, sv.F || {});
+  curMap = sv.map || "road";
+  player.x = sv.x; player.y = sv.y; player.px = player.x * 8; player.py = player.y * 8; player.moving = false;
+  mode = "world";
+}
+function drawSavePrompt() {
+  rect(0,0,160,144,PAL[0]);
+  rect(8,30,144,84,PAL[3]); rect(10,32,140,80,PAL[0]);
+  centerText("SAVE FOUND", 44, PAL[3], 9);
+  centerText("A traveler is mid-walk.", 60, PAL[2], 8);
+  centerText("A: CONTINUE", 78, PAL[3], 8);
+  centerText("B: NEW GAME (erases save)", 92, PAL[2], 8);
+}
+
+// ===================== FOV (rot.js Precise Shadowcasting, BSD) =====================
+const OPAQUE = new Set(["T","D","W"]);
+const seenByMap = {};
+function computeVis() {
+  const vis = new Set();
+  const radius = { road:6, chapel:5, yard:7, cut:7 }[curMap] || 6;
+  try {
+    const fov = new ROTFOV((x,y) => {
+      if (x < 0 || y < 0 || x >= 20 || y >= 18) return false;
+      return !OPAQUE.has(MAPS[curMap][y][x]);
+    }, { topology: 4 });
+    fov.compute(player.x, player.y, radius, (x,y) => { if (x >= 0 && y >= 0 && x < 20 && y < 18) vis.add(x + "," + y); });
+  } catch(e) {
+    for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++) vis.add(x + "," + y);
+  }
+  return vis;
+}
+
+</script>
+<script>
 "use strict";
 // ===================== MAIN LOOP =====================
 function drawEnd() {
@@ -930,9 +1645,13 @@ function drawEnd() {
 
 function loop() {
   frame++;
+  if (pressedA) initAudio();
   // ---- update ----
   if (mode === "title") {
-    if (pressedA) { pressedA = false; document.getElementById("titlecard").style.display = "none"; initExam(); }
+    if (pressedA) { pressedA = false; document.getElementById("titlecard").style.display = "none"; if (loadSave()) mode = "saveprompt"; else initExam(); }
+  } else if (mode === "saveprompt") {
+    if (pressedA) { pressedA = false; restoreSave(); }
+    else if (pressedB) { pressedB = false; clearSave(); initExam(); }
   } else if (mode === "exam") {
     updateExam();
   } else if (mode === "dlg") {
@@ -963,9 +1682,11 @@ function loop() {
     drawCardFace(20, 20, 120);
     centerText("B: back", 124, PAL[2], 8);
   }
+  else if (mode === "saveprompt") drawSavePrompt();
   else if (mode === "battle") drawBattle();
   else if (mode === "world") drawWorld();
   else if (mode === "endpage") drawEnd();
+  musicTick();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -990,6 +1711,7 @@ cv.addEventListener("click", e => {
   pressedA = true;
 });
 document.getElementById("titlecard").addEventListener("click", () => { pressedA = true; });
+document.getElementById("bM").addEventListener("click", e => { e.preventDefault(); initAudio(); muted = !muted; });
 </script>
 </body>
 </html>
