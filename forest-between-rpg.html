@@ -157,6 +157,21 @@ const SPR_SHELLEY = [
 "..0000..",".000000.",".033330.",".033330.","..0000..",".000000.","00000000","0.0000.0",".033330.",".000000.",".000000.",".111.111"];
 const SPR_MOFFAT = [
 "...00...","..0000..","..0110..","..0000..","...00...","..0000..",".000000.",".000000.",".000000.",".011110.",".000000.","00000000"];
+const SPR_KNIGHT = [
+"..2.....",
+".22.....",
+"3222....",
+"33322...",
+"33333...",
+"..3333..",
+"...333..",
+"..3333..",
+".33333..",
+".333333.",
+"33333333",
+"33333333",
+];
+const PAL_DARK = { "1":"#306230", "2":"#0f380f", "3":"#8bac0f" };
 const SPR_BISHOP = [
 "..1111..",".111111.",".133331.",".111111.","..1111..",".111111.","11111111","1.1111.1",".111111.",".111111.",".333.333",".333.333"];
 const SPR_PAWN = [
@@ -330,12 +345,29 @@ candle: [["","The candle burns low. She will not let it go out."]],
 book: [["","Her book falls open to the liturgy of the Turning. The margins are full of her handwriting."]],
 moffat: [["","Weathered gray, kind face gone smooth. He faces the treeline."]],
 lose: [["","The forest goes dark. The bell tolls somewhere far away."]],
+bridge: [
+  ["","The Bishop's belt pouch holds a page torn from a ledger. One line, in a careful hand."],
+  ["","BELOW."],
+  ["YOU","The cut is not a cut. It is a shaft. The White Court was guarding a door."],
+  ["DAD","I know that dark. Miners' dark. The Dark Court keeps the old workings under this hill."],
+  ["DAD","They will have heard the bell by now. Whatever we do down there, we do it counted."],
+],
+shrine: [
+  ["","A statue stands buried to the waist in wet stone, facing the deep. A warning, posted the miners' way."],
+  ["","Something moves in the dark past it. Slow. Deliberate. Counting your steps the way you counted the statues."],
+  ["DARK COURT","Bell-ringer's child. You heard our silence all your life. Now hear the rest of it."],
+],
+win2: [
+  ["","The Knight folds into the wet dark like a piece swept off the board."],
+  ["","Far below, water moves. The mine gives back its silence, and this time the silence is only silence."],
+  ["DAD","Two courts, boy. Counted and closed. Now we climb, and nobody follows."],
+],
 };
 </script>
 <script>
 "use strict";
 // ===================== GAME STATE =====================
-const F = { intro:false, toll:false, greeted:false, meat:false, job:false, cutSeen:false, won:false };
+const F = { intro:false, toll:false, greeted:false, meat:false, job:false, cutSeen:false, won:false, mines:false, mineSeed:0, shrineSeen:false };
 let mode = "title"; // title | world | dlg | battle | card | end
 const player = { x:10, y:16, px:80, py:128, dir:"up", moving:false, mx:0, my:0 };
 let curMap = "road";
@@ -419,8 +451,94 @@ function drawCard() {
   if (Math.floor(frame/20)%2===0) centerText("PRESS A", 122, PAL[2], 8);
 }
 
+// ===================== THE MINES (rot.js Cellular, seeded) =====================
+let MINE_START = { x: 1, y: 1 };
+function mineConnected(g, start) {
+  let total = 0;
+  for (const row of g) for (const c of row) if (c === ".") total++;
+  const seen = new Set([start.x + "," + start.y]);
+  const q = [[start.x, start.y]];
+  while (q.length) {
+    const [cx, cy] = q.shift();
+    for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      const nx = cx + dx, ny = cy + dy, k = nx + "," + ny;
+      if (nx < 0 || ny < 0 || nx >= 20 || ny >= 18 || seen.has(k)) continue;
+      if (g[ny][nx] !== ".") continue;
+      seen.add(k); q.push([nx, ny]);
+    }
+  }
+  return seen.size === total;
+}
+function ensureMine() {
+  if (MAPS.mine) return;
+  if (!F.mineSeed) F.mineSeed = 1000 + Math.floor(Math.random() * 899999);
+  ROTRNG.setSeed(F.mineSeed);
+  const cel = new ROTCellular(20, 18, { topology: 8 });
+  cel.randomize(0.45);
+  cel.create(); cel.create(); cel.create();
+  const g = [];
+  for (let y = 0; y < 18; y++) { g.push(new Array(20).fill("W")); }
+  cel.connect((x, y, v) => { g[y][x] = v === 1 ? "W" : "."; });
+  for (let x = 0; x < 20; x++) { g[0][x] = "W"; g[17][x] = "W"; }
+  for (let y = 0; y < 18; y++) { g[y][0] = "W"; g[y][19] = "W"; }
+  // start: the largest 4-connected floor region wins; smaller pockets are filled in
+  const compSeen = new Set(); let bestComp = [];
+  for (let y = 1; y < 17; y++) for (let x = 1; x < 19; x++) {
+    const k0 = x + "," + y;
+    if (g[y][x] !== "." || compSeen.has(k0)) continue;
+    const comp = []; const qq = [[x, y]]; compSeen.add(k0);
+    while (qq.length) {
+      const [cx, cy] = qq.shift(); comp.push([cx, cy]);
+      for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+        const nx = cx + dx, ny = cy + dy, kk = nx + "," + ny;
+        if (nx < 0 || ny < 0 || nx >= 20 || ny >= 18 || compSeen.has(kk)) continue;
+        if (g[ny][nx] !== ".") continue;
+        compSeen.add(kk); qq.push([nx, ny]);
+      }
+    }
+    if (comp.length > bestComp.length) bestComp = comp;
+  }
+  const inComp = new Set(bestComp.map(([cx, cy]) => cx + "," + cy));
+  for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++)
+    if (g[y][x] === "." && !inComp.has(x + "," + y)) g[y][x] = "W";
+  const start = { x: bestComp[0][0], y: bestComp[0][1] };
+  // shrine: farthest floor from start (BFS)
+  const dist = { [start.x + "," + start.y]: 0 };
+  const q = [[start.x, start.y]]; let far = start;
+  while (q.length) {
+    const [cx, cy] = q.shift();
+    for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      const nx = cx + dx, ny = cy + dy, k = nx + "," + ny;
+      if (nx < 0 || ny < 0 || nx >= 20 || ny >= 18) continue;
+      if (g[ny][nx] !== "." || k in dist) continue;
+      dist[k] = dist[cx + "," + cy] + 1; far = { x: nx, y: ny }; q.push([nx, ny]);
+    }
+  }
+  // prune floor pockets only reachable diagonally: rot.js connects in 8 directions, the game walks in 4
+  for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++)
+    if (g[y][x] === "." && !((x + "," + y) in dist)) g[y][x] = "W";
+  g[far.y][far.x] = "Q";
+  // drowned seepage: some floor pockets by the walls are under water
+  for (let y = 1; y < 17; y++) for (let x = 1; x < 19; x++) {
+    if (g[y][x] !== ".") continue;
+    if ((x === start.x && y === start.y) || (x === far.x && y === far.y)) continue;
+    let walls = 0;
+    for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]) if (g[y+dy][x+dx] === "W") walls++;
+    if (walls >= 5 && ROTRNG.getUniform() < 0.35) {
+      g[y][x] = "~";
+      if (!mineConnected(g, start)) g[y][x] = "."; // never sever the way through
+    }
+  }
+  // the shrine must keep a dry approach
+  const dryN = [[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy]) => g[far.y+dy] && g[far.y+dy][far.x+dx] === ".");
+  if (!dryN) for (const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) { if (g[far.y+dy] && g[far.y+dy][far.x+dx] === "~") { g[far.y+dy][far.x+dx] = "."; break; } }
+  MAPS.mine = g.map(r => r.join(""));
+  MINE_START = start;
+}
+
 // ===================== TRANSITIONS =====================
 function goMap(name, sx, sy) {
+  if (name === "mine") ensureMine();
   fadeDir = 1; fade = 0;
   pending = () => { curMap = name; player.x = sx; player.y = sy; player.px = sx*8; player.py = sy*8; player.moving = false; };
 }
@@ -450,6 +568,12 @@ function tryInteract() {
     if (npc && npc.id === "shelley") {
       if (!F.meat) { F.meat = true; startDialogue(D.meat, () => { goMap("chapel", 10, 11); saveGame(); }); return; }
       startDialogue([["SHELLEY","Inside, love. The table talk."]]); return;
+    }
+  }
+  if (curMap === "mine") {
+    if (t === "Q") {
+      if (!F.mines) { startDialogue(D.shrine, () => startBattle2()); return; }
+      startDialogue([["","The shrine is quiet now. Whatever stood here has been counted."]]); return;
     }
   }
   if (curMap === "road") {
@@ -508,6 +632,10 @@ function onStep() {
     startDialogue(D.battlein, () => startBattle());
     return;
   }
+  if (curMap === "cut" && F.won && !F.mines && mode === "world" && player.x >= 8 && player.x <= 11 && player.y >= 6 && player.y <= 9) {
+    startDialogue(D.bridge, () => { ensureMine(); goMap("mine", MINE_START.x, MINE_START.y); });
+    return;
+  }
 }
 
 // ===================== WORLD RENDER =====================
@@ -543,7 +671,7 @@ function drawWorld() {
   if (tollTimer > 0) { ctx.fillStyle = "rgba(155,188,15,0.18)"; ctx.fillRect(0,0,160,144); }
   if (fade > 0) { ctx.fillStyle = "rgba(15,56,15," + (fade/255) + ")"; ctx.fillRect(0,0,160,144); }
   // map label
-  const label = { road:"THE FOREST ROAD", chapel:"SHELLEY'S CHAPEL", yard:"THE SIDE YARD", cut:"THE OLD CUT" }[curMap];
+  const label = { road:"THE FOREST ROAD", chapel:"SHELLEY'S CHAPEL", yard:"THE SIDE YARD", cut:"THE OLD CUT", mine:"THE DROWNED MINES" }[curMap];
   rect(0,0,160,10,PAL[0]); text(label, 4, 1, PAL[3]);
   if (muted) text("MUTED", 126, 1, PAL[1]);
   if (savedFlash > 0) { text("SAVED", 128, 134, PAL[2]); savedFlash--; }
@@ -699,10 +827,34 @@ function startBattle() {
     enemies:[
       { kind:"bishop", name:"BISHOP", spr:SPR_BISHOP, x:6, y:3, hp:25, strain:0, an:2, speed:2 },
       { kind:"pawn",   name:"PAWN",   spr:SPR_PAWN,   x:6, y:5, hp:12, strain:0, an:0, speed:3 }
-    ]
+    ],
+    courtMsg:"The White Court moves...", winFlag:"cut",
+    winDlg:D.win,
+    winCard:() => ["THE FOREST BETWEEN","","The White Court yields the cut.","Ledger: Bishop and Pawn felled.","Strain at close: " + playerCard.strain + "%.","","But the ledger has another page."],
+    afterCard:() => { mode = "world"; startDialogue(D.bridge, () => { ensureMine(); goMap("mine", MINE_START.x, MINE_START.y); saveGame(); }); }
   };
   mode = "battle";
   bmsg("Your activation. 2 AP. The clock is ticking.");
+}
+function startBattle2() {
+  B = {
+    tick:1, phase:"menu", menuCur:0,
+    x:1, y:4, php:25, strain:playerCard.strain, an:2, ap:2, speed:3,
+    borrowDebt:false, borrowing:false, pendingCast:null,
+    relicUsed:false, msg:"", msgTimer:0,
+    cx:1, cy:4, pendingSpell:-1,
+    steps:[], stepIdx:0, stepTimer:0, paused:false,
+    enemies:[
+      { kind:"knight", name:"DARK KNIGHT", spr:SPR_KNIGHT, pal:PAL_DARK, x:6, y:3, hp:25, strain:0, an:3, speed:3, castName:"NECRO BOLT", castDmg:4, castStrain:10, castLabel:"The Necro Bolt lands!" },
+      { kind:"dpawn",  name:"DARK PAWN",   spr:SPR_PAWN,   pal:PAL_DARK, x:6, y:5, hp:12, strain:0, an:0, speed:3 }
+    ],
+    courtMsg:"The Dark Court moves...", winFlag:"mines",
+    winDlg:D.win2,
+    winCard:() => ["THE DROWNED MINES","","The Dark Court yields the deep.","Ledger: Knight and Pawn felled below.","Strain at close: " + playerCard.strain + "%.","","The bell remembers both courts."],
+    afterCard:() => { mode = "endpage"; }
+  };
+  mode = "battle";
+  bmsg("The deep. Your activation. 2 AP. No bell down here but yours.");
 }
 function bmsg(s) { B.msg = s; B.msgTimer = 70; }
 
@@ -716,7 +868,8 @@ function dmgPlayer(n, label, addStrain) {
 function checkWin() {
   if (B.enemies.every(e => e.hp <= 0)) {
     B.phase = "won";
-    F.won = true; sfx("win");
+    if (B.winFlag === "mines") F.mines = true; else F.won = true;
+    sfx("win");
     playerCard.hp = B.php; playerCard.strain = B.strain;
     saveGame();
     return true;
@@ -727,7 +880,7 @@ function endActivation() {
   if (checkWin()) return;
   B.phase = "enemy"; B.paused = false;
   B.steps = [];
-  B.steps.push(() => bmsg("The White Court moves..."));
+  B.steps.push(() => bmsg(B.courtMsg || "The White Court moves..."));
   for (const e of B.enemies) if (e.hp > 0) B.steps.push(((en) => () => enemyAct(en))(e));
   B.steps.push(() => {
     B.tick = Math.min(6, B.tick + 1);
@@ -768,6 +921,28 @@ function moveToward(e, target) {
 }
 function enemyAct(e) {
   if (e.hp <= 0) return;
+  if (e.kind === "knight") {
+    if (e.strain >= 70) { e.strain = Math.max(0, e.strain - 15); bmsg("The Knight vents. Wet dark hisses off the steel."); return; }
+    if (mdist(e, B) === 1) { dmgPlayer(4 + esc(), "The Knight swings a miner's pick!"); return; }
+    if (mdist(e, B) > 4) {
+      const Ls = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+      let best = null, bestD = mdist(e, B);
+      for (const [dx,dy] of Ls) {
+        const nx = e.x + dx, ny = e.y + dy;
+        if (nx < 0 || ny < 0 || nx > 7 || ny > 7) continue;
+        if (cellBlocked(nx, ny, e)) continue;
+        const d = mdist({x:nx, y:ny}, B);
+        if (d < bestD) { bestD = d; best = [nx, ny]; }
+      }
+      if (best) { e.x = best[0]; e.y = best[1]; bmsg("The Knight jumps the dark, L-shaped and sudden."); }
+      else moveToward(e, B);
+    }
+    if (mdist(e, B) <= 4 && e.an >= 1) { askBorrow(e); return; }
+    if (mdist(e, B) > 1) moveToward(e, B);
+    if (mdist(e, B) === 1) { dmgPlayer(4 + esc(), "The Knight swings a miner's pick!"); return; }
+    bmsg("The Knight waits in the wet dark, counting.");
+    return;
+  }
   if (e.kind === "bishop") {
     if (e.strain >= 70) { e.strain = Math.max(0, e.strain - 15); bmsg("The Bishop vents. Light hisses off his hands."); return; }
     if (mdist(e, B) <= 4 && e.an >= 1) { askBorrow(e); return; }
@@ -776,14 +951,19 @@ function enemyAct(e) {
     bmsg("The Bishop closes in, patient as chess.");
     return;
   }
-  // pawn
+  // pawns
   moveToward(e, B);
-  if (mdist(e, B) === 1) dmgPlayer(3 + esc(), "The Pawn rakes you!");
-  else bmsg("The Pawn scrabbles closer through the rocks.");
+  if (e.kind === "dpawn") {
+    if (mdist(e, B) === 1) dmgPlayer(4 + esc(), "The Dark Pawn rakes you with grave-cold hands!");
+    else bmsg("The Dark Pawn scrabbles closer through the wet stone.");
+  } else {
+    if (mdist(e, B) === 1) dmgPlayer(3 + esc(), "The Pawn rakes you!");
+    else bmsg("The Pawn scrabbles closer through the rocks.");
+  }
 }
 function askBorrow(e) {
   B.pendingCast = e; B.borrowing = true; B.paused = true;
-  B.msg = "BORROWED TIME! The Bishop casts SMITE.";
+  B.msg = "BORROWED TIME! " + e.name + " casts " + (e.castName || "SMITE") + ".";
   B.msgTimer = 99999;
 }
 function resolveBorrow(counter) {
@@ -792,9 +972,9 @@ function resolveBorrow(counter) {
   if (counter) {
     sfx("counter");
     B.borrowDebt = true;
-    bmsg("Borrowed! The Smite dies midair. The Bishop still pays AN and Strain for the casting.");
+    bmsg("Borrowed! The cast dies midair. " + e.name + " still pays AN and Strain for the casting.");
   } else {
-    dmgPlayer(5 + esc(), "The Smite lands!", 8);
+    dmgPlayer((e.castDmg || 5) + esc(), e.castLabel || "The Smite lands!", e.castStrain == null ? 8 : e.castStrain);
   }
   B.stepTimer = 55;
 }
@@ -852,7 +1032,7 @@ function doCastAt(cx, cy) {
 }
 
 function updateBattle() {
-  if (B.phase === "won") { if (pressedA) { pressedA = false; startDialogue(D.win, () => showCard(["THE FOREST BETWEEN","","End of Act One.","Ledger: Bishop and Pawn felled.","Strain at close: " + playerCard.strain + "%.","","Thank you for playing."], () => { mode = "endpage"; })); } return; }
+  if (B.phase === "won") { if (pressedA) { pressedA = false; startDialogue(B.winDlg, () => showCard(B.winCard(), B.afterCard)); } return; }
   if (B.phase === "lost") { if (pressedA) { pressedA = false; showCard(["The forest goes dark.","The bell tolls, far away.","","Press A to try","the cut again."], () => startBattle()); } return; }
   if (B.borrowing) {
     if (pressedA) { pressedA = false; resolveBorrow(true); }
@@ -908,12 +1088,12 @@ function drawBattle() {
     }
   }
   // units
-  const drawUnit = (sprt, ux, uy, hp, maxhp) => {
-    spr(sprt, GX + ux*CELL + 2, GY + uy*CELL, PAL_SPR);
+  const drawUnit = (sprt, ux, uy, hp, maxhp, pal) => {
+    spr(sprt, GX + ux*CELL + 2, GY + uy*CELL, pal || PAL_SPR);
     rect(GX + ux*CELL + 1, GY + uy*CELL + 11, 11, 2, PAL[0]);
     rect(GX + ux*CELL + 1, GY + uy*CELL + 11, Math.round(11 * hp/maxhp), 2, PAL[3]);
   };
-  for (const e of B.enemies) if (e.hp > 0) drawUnit(e.spr, e.x, e.y, e.hp, e.kind==="bishop" ? 25 : 12);
+  for (const e of B.enemies) if (e.hp > 0) drawUnit(e.spr, e.x, e.y, e.hp, (e.kind==="bishop" || e.kind==="knight") ? 25 : 12, e.pal);
   drawUnit(SPR_TRAVELER, B.x, B.y, B.php, 25);
   // cursor
   if ((B.phase === "move" || B.phase === "target") && Math.floor(frame/15)%2===0) {
@@ -1538,6 +1718,488 @@ class ROTAStar extends ROTPath {
 }
 
 
+// ---- rot.js map generation: RNG (Alea, MIT) + Cellular (BSD) ----
+/**
+ * This code is an implementation of Alea algorithm; (C) 2010 Johannes Baagøe.
+ * Alea is licensed according to the http://en.wikipedia.org/wiki/MIT_License.
+ */
+const FRAC = 2.3283064365386963e-10; /* 2^-32 */
+class ROTRNGClass {
+    constructor() {
+        this._seed = 0;
+        this._s0 = 0;
+        this._s1 = 0;
+        this._s2 = 0;
+        this._c = 0;
+    }
+    getSeed() { return this._seed; }
+    /**
+     * Seed the number generator
+     */
+    setSeed(seed) {
+        seed = (seed < 1 ? 1 / seed : seed);
+        this._seed = seed;
+        this._s0 = (seed >>> 0) * FRAC;
+        seed = (seed * 69069 + 1) >>> 0;
+        this._s1 = seed * FRAC;
+        seed = (seed * 69069 + 1) >>> 0;
+        this._s2 = seed * FRAC;
+        this._c = 1;
+        return this;
+    }
+    /**
+     * @returns Pseudorandom value [0,1), uniformly distributed
+     */
+    getUniform() {
+        let t = 2091639 * this._s0 + this._c * FRAC;
+        this._s0 = this._s1;
+        this._s1 = this._s2;
+        this._c = t | 0;
+        this._s2 = t - this._c;
+        return this._s2;
+    }
+    /**
+     * @param lowerBound The lower end of the range to return a value from, inclusive
+     * @param upperBound The upper end of the range to return a value from, inclusive
+     * @returns Pseudorandom value [lowerBound, upperBound], using ROT.RNG.getUniform() to distribute the value
+     */
+    getUniformInt(lowerBound, upperBound) {
+        let max = Math.max(lowerBound, upperBound);
+        let min = Math.min(lowerBound, upperBound);
+        return Math.floor(this.getUniform() * (max - min + 1)) + min;
+    }
+    /**
+     * @param mean Mean value
+     * @param stddev Standard deviation. ~95% of the absolute values will be lower than 2*stddev.
+     * @returns A normally distributed pseudorandom value
+     */
+    getNormal(mean = 0, stddev = 1) {
+        let u, v, r;
+        do {
+            u = 2 * this.getUniform() - 1;
+            v = 2 * this.getUniform() - 1;
+            r = u * u + v * v;
+        } while (r > 1 || r == 0);
+        let gauss = u * Math.sqrt(-2 * Math.log(r) / r);
+        return mean + gauss * stddev;
+    }
+    /**
+     * @returns Pseudorandom value [1,100] inclusive, uniformly distributed
+     */
+    getPercentage() {
+        return 1 + Math.floor(this.getUniform() * 100);
+    }
+    /**
+     * @returns Randomly picked item, null when length=0
+     */
+    getItem(array) {
+        if (!array.length) {
+            return null;
+        }
+        return array[Math.floor(this.getUniform() * array.length)];
+    }
+    /**
+     * @returns New array with randomized items
+     */
+    shuffle(array) {
+        let result = [];
+        let clone = array.slice();
+        while (clone.length) {
+            let index = clone.indexOf(this.getItem(clone));
+            result.push(clone.splice(index, 1)[0]);
+        }
+        return result;
+    }
+    /**
+     * @param data key=whatever, value=weight (relative probability)
+     * @returns whatever
+     */
+    getWeightedValue(data) {
+        let total = 0;
+        for (let id in data) {
+            total += data[id];
+        }
+        let random = this.getUniform() * total;
+        let id, part = 0;
+        for (id in data) {
+            part += data[id];
+            if (random < part) {
+                return id;
+            }
+        }
+        // If by some floating-point annoyance we have
+        // random >= total, just return the last id.
+        return id;
+    }
+    /**
+     * Get RNG state. Useful for storing the state and re-setting it via setState.
+     * @returns Internal state
+     */
+    getState() { return [this._s0, this._s1, this._s2, this._c]; }
+    /**
+     * Set a previously retrieved state.
+     */
+    setState(state) {
+        this._s0 = state[0];
+        this._s1 = state[1];
+        this._s2 = state[2];
+        this._c = state[3];
+        return this;
+    }
+    /**
+     * Returns a cloned RNG
+     */
+    clone() {
+        let clone = new RNG();
+        return clone.setState(this.getState());
+    }
+}
+const ROTRNG = new ROTRNGClass().setSeed(20261020);
+
+;
+class ROTMapBase {
+    /**
+     * @class Base map generator
+     * @param {int} [width=ROT.80]
+     * @param {int} [height=ROT.25]
+     */
+    constructor(width = 80, height = 25) {
+        this._width = width;
+        this._height = height;
+    }
+    ;
+    _fillMap(value) {
+        let map = [];
+        for (let i = 0; i < this._width; i++) {
+            map.push([]);
+            for (let j = 0; j < this._height; j++) {
+                map[i].push(value);
+            }
+        }
+        return map;
+    }
+}
+
+;
+/**
+ * @class Cellular automaton map generator
+ * @augments ROT.Map
+ * @param {int} [width=ROT.DEFAULT_WIDTH]
+ * @param {int} [height=ROT.DEFAULT_HEIGHT]
+ * @param {object} [options] Options
+ * @param {int[]} [options.born] List of neighbor counts for a new cell to be born in empty space
+ * @param {int[]} [options.survive] List of neighbor counts for an existing  cell to survive
+ * @param {int} [options.topology] Topology 4 or 6 or 8
+ */
+class ROTCellular extends ROTMapBase {
+    constructor(width, height, options = {}) {
+        super(width, height);
+        this._options = {
+            born: [5, 6, 7, 8],
+            survive: [4, 5, 6, 7, 8],
+            topology: 8
+        };
+        this.setOptions(options);
+        this._dirs = ROTDIRS[this._options.topology];
+        this._map = this._fillMap(0);
+    }
+    /**
+     * Fill the map with random values
+     * @param {float} probability Probability for a cell to become alive; 0 = all empty, 1 = all full
+     */
+    randomize(probability) {
+        for (let i = 0; i < this._width; i++) {
+            for (let j = 0; j < this._height; j++) {
+                this._map[i][j] = (ROTRNG.getUniform() < probability ? 1 : 0);
+            }
+        }
+        return this;
+    }
+    /**
+     * Change options.
+     * @see ROT.Map.Cellular
+     */
+    setOptions(options) { Object.assign(this._options, options); }
+    set(x, y, value) { this._map[x][y] = value; }
+    create(callback) {
+        let newMap = this._fillMap(0);
+        let born = this._options.born;
+        let survive = this._options.survive;
+        for (let j = 0; j < this._height; j++) {
+            let widthStep = 1;
+            let widthStart = 0;
+            if (this._options.topology == 6) {
+                widthStep = 2;
+                widthStart = j % 2;
+            }
+            for (let i = widthStart; i < this._width; i += widthStep) {
+                let cur = this._map[i][j];
+                let ncount = this._getNeighbors(i, j);
+                if (cur && survive.indexOf(ncount) != -1) { /* survive */
+                    newMap[i][j] = 1;
+                }
+                else if (!cur && born.indexOf(ncount) != -1) { /* born */
+                    newMap[i][j] = 1;
+                }
+            }
+        }
+        this._map = newMap;
+        callback && this._serviceCallback(callback);
+    }
+    _serviceCallback(callback) {
+        for (let j = 0; j < this._height; j++) {
+            let widthStep = 1;
+            let widthStart = 0;
+            if (this._options.topology == 6) {
+                widthStep = 2;
+                widthStart = j % 2;
+            }
+            for (let i = widthStart; i < this._width; i += widthStep) {
+                callback(i, j, this._map[i][j]);
+            }
+        }
+    }
+    /**
+     * Get neighbor count at [i,j] in this._map
+     */
+    _getNeighbors(cx, cy) {
+        let result = 0;
+        for (let i = 0; i < this._dirs.length; i++) {
+            let dir = this._dirs[i];
+            let x = cx + dir[0];
+            let y = cy + dir[1];
+            if (x < 0 || x >= this._width || y < 0 || y >= this._height) {
+                continue;
+            }
+            result += (this._map[x][y] == 1 ? 1 : 0);
+        }
+        return result;
+    }
+    /**
+     * Make sure every non-wall space is accessible.
+     * @param {function} callback to call to display map when do
+     * @param {int} value to consider empty space - defaults to 0
+     * @param {function} callback to call when a new connection is made
+     */
+    connect(callback, value, connectionCallback) {
+        if (!value)
+            value = 0;
+        let allFreeSpace = [];
+        let notConnected = {};
+        // find all free space
+        let widthStep = 1;
+        let widthStarts = [0, 0];
+        if (this._options.topology == 6) {
+            widthStep = 2;
+            widthStarts = [0, 1];
+        }
+        for (let y = 0; y < this._height; y++) {
+            for (let x = widthStarts[y % 2]; x < this._width; x += widthStep) {
+                if (this._freeSpace(x, y, value)) {
+                    let p = [x, y];
+                    notConnected[this._pointKey(p)] = p;
+                    allFreeSpace.push([x, y]);
+                }
+            }
+        }
+        let start = allFreeSpace[ROTRNG.getUniformInt(0, allFreeSpace.length - 1)];
+        let key = this._pointKey(start);
+        let connected = {};
+        connected[key] = start;
+        delete notConnected[key];
+        // find what's connected to the starting point
+        this._findConnected(connected, notConnected, [start], false, value);
+        while (Object.keys(notConnected).length > 0) {
+            // find two points from notConnected to connected
+            let p = this._getFromTo(connected, notConnected);
+            let from = p[0]; // notConnected
+            let to = p[1]; // connected
+            // find everything connected to the starting point
+            let local = {};
+            local[this._pointKey(from)] = from;
+            this._findConnected(local, notConnected, [from], true, value);
+            // connect to a connected cell
+            let tunnelFn = (this._options.topology == 6 ? this._tunnelToConnected6 : this._tunnelToConnected);
+            tunnelFn.call(this, to, from, connected, notConnected, value, connectionCallback);
+            // now all of local is connected
+            for (let k in local) {
+                let pp = local[k];
+                this._map[pp[0]][pp[1]] = value;
+                connected[k] = pp;
+                delete notConnected[k];
+            }
+        }
+        callback && this._serviceCallback(callback);
+    }
+    /**
+     * Find random points to connect. Search for the closest point in the larger space.
+     * This is to minimize the length of the passage while maintaining good performance.
+     */
+    _getFromTo(connected, notConnected) {
+        let from = [0, 0], to = [0, 0], d;
+        let connectedKeys = Object.keys(connected);
+        let notConnectedKeys = Object.keys(notConnected);
+        for (let i = 0; i < 5; i++) {
+            if (connectedKeys.length < notConnectedKeys.length) {
+                let keys = connectedKeys;
+                to = connected[keys[ROTRNG.getUniformInt(0, keys.length - 1)]];
+                from = this._getClosest(to, notConnected);
+            }
+            else {
+                let keys = notConnectedKeys;
+                from = notConnected[keys[ROTRNG.getUniformInt(0, keys.length - 1)]];
+                to = this._getClosest(from, connected);
+            }
+            d = (from[0] - to[0]) * (from[0] - to[0]) + (from[1] - to[1]) * (from[1] - to[1]);
+            if (d < 64) {
+                break;
+            }
+        }
+        // console.log(">>> connected=" + to + " notConnected=" + from + " dist=" + d);
+        return [from, to];
+    }
+    _getClosest(point, space) {
+        let minPoint = null;
+        let minDist = null;
+        for (let k in space) {
+            let p = space[k];
+            let d = (p[0] - point[0]) * (p[0] - point[0]) + (p[1] - point[1]) * (p[1] - point[1]);
+            if (minDist == null || d < minDist) {
+                minDist = d;
+                minPoint = p;
+            }
+        }
+        return minPoint;
+    }
+    _findConnected(connected, notConnected, stack, keepNotConnected, value) {
+        while (stack.length > 0) {
+            let p = stack.splice(0, 1)[0];
+            let tests;
+            if (this._options.topology == 6) {
+                tests = [
+                    [p[0] + 2, p[1]],
+                    [p[0] + 1, p[1] - 1],
+                    [p[0] - 1, p[1] - 1],
+                    [p[0] - 2, p[1]],
+                    [p[0] - 1, p[1] + 1],
+                    [p[0] + 1, p[1] + 1],
+                ];
+            }
+            else {
+                tests = [
+                    [p[0] + 1, p[1]],
+                    [p[0] - 1, p[1]],
+                    [p[0], p[1] + 1],
+                    [p[0], p[1] - 1]
+                ];
+            }
+            for (let i = 0; i < tests.length; i++) {
+                let key = this._pointKey(tests[i]);
+                if (connected[key] == null && this._freeSpace(tests[i][0], tests[i][1], value)) {
+                    connected[key] = tests[i];
+                    if (!keepNotConnected) {
+                        delete notConnected[key];
+                    }
+                    stack.push(tests[i]);
+                }
+            }
+        }
+    }
+    _tunnelToConnected(to, from, connected, notConnected, value, connectionCallback) {
+        let a, b;
+        if (from[0] < to[0]) {
+            a = from;
+            b = to;
+        }
+        else {
+            a = to;
+            b = from;
+        }
+        for (let xx = a[0]; xx <= b[0]; xx++) {
+            this._map[xx][a[1]] = value;
+            let p = [xx, a[1]];
+            let pkey = this._pointKey(p);
+            connected[pkey] = p;
+            delete notConnected[pkey];
+        }
+        if (connectionCallback && a[0] < b[0]) {
+            connectionCallback(a, [b[0], a[1]]);
+        }
+        // x is now fixed
+        let x = b[0];
+        if (from[1] < to[1]) {
+            a = from;
+            b = to;
+        }
+        else {
+            a = to;
+            b = from;
+        }
+        for (let yy = a[1]; yy < b[1]; yy++) {
+            this._map[x][yy] = value;
+            let p = [x, yy];
+            let pkey = this._pointKey(p);
+            connected[pkey] = p;
+            delete notConnected[pkey];
+        }
+        if (connectionCallback && a[1] < b[1]) {
+            connectionCallback([b[0], a[1]], [b[0], b[1]]);
+        }
+    }
+    _tunnelToConnected6(to, from, connected, notConnected, value, connectionCallback) {
+        let a, b;
+        if (from[0] < to[0]) {
+            a = from;
+            b = to;
+        }
+        else {
+            a = to;
+            b = from;
+        }
+        // tunnel diagonally until horizontally level
+        let xx = a[0];
+        let yy = a[1];
+        while (!(xx == b[0] && yy == b[1])) {
+            let stepWidth = 2;
+            if (yy < b[1]) {
+                yy++;
+                stepWidth = 1;
+            }
+            else if (yy > b[1]) {
+                yy--;
+                stepWidth = 1;
+            }
+            if (xx < b[0]) {
+                xx += stepWidth;
+            }
+            else if (xx > b[0]) {
+                xx -= stepWidth;
+            }
+            else if (b[1] % 2) {
+                // Won't step outside map if destination on is map's right edge
+                xx -= stepWidth;
+            }
+            else {
+                // ditto for left edge
+                xx += stepWidth;
+            }
+            this._map[xx][yy] = value;
+            let p = [xx, yy];
+            let pkey = this._pointKey(p);
+            connected[pkey] = p;
+            delete notConnected[pkey];
+        }
+        if (connectionCallback) {
+            connectionCallback(from, to);
+        }
+    }
+    _freeSpace(x, y, value) {
+        return x >= 0 && x < this._width && y >= 0 && y < this._height && this._map[x][y] == value;
+    }
+    _pointKey(p) { return p[0] + "." + p[1]; }
+}
+
+
 // ===================== SOUND (ZzFX by Frank Force, MIT) =====================
 let audioReady = false, muted = false;
 function initAudio() {
@@ -1574,7 +2236,7 @@ function musicTick() {
   let key = null;
   if (mode === "battle") key = "battle";
   else if (mode === "exam") key = "chapel";
-  else if (mode === "world" || mode === "dlg" || mode === "cardview") key = (curMap === "chapel") ? "chapel" : "road";
+  else if (mode === "world" || mode === "dlg" || mode === "cardview") key = (curMap === "chapel" || curMap === "mine") ? "chapel" : "road";
   if (!key) return;
   const p = MUSPAT[key];
   if (frame % p.t === 0) {
@@ -1600,6 +2262,7 @@ function restoreSave() {
   Object.assign(playerCard, sv.card || {});
   Object.assign(F, sv.F || {});
   curMap = sv.map || "road";
+  if (curMap === "mine") ensureMine();
   player.x = sv.x; player.y = sv.y; player.px = player.x * 8; player.py = player.y * 8; player.moving = false;
   mode = "world";
 }
@@ -1617,7 +2280,7 @@ const OPAQUE = new Set(["T","D","W"]);
 const seenByMap = {};
 function computeVis() {
   const vis = new Set();
-  const radius = { road:6, chapel:5, yard:7, cut:7 }[curMap] || 6;
+  const radius = { road:6, chapel:5, yard:7, cut:7, mine:5 }[curMap] || 6;
   try {
     const fov = new ROTFOV((x,y) => {
       if (x < 0 || y < 0 || x >= 20 || y >= 18) return false;
@@ -1637,8 +2300,9 @@ function computeVis() {
 function drawEnd() {
   rect(0,0,160,144,PAL[0]);
   centerText("THE FOREST BETWEEN", 26, PAL[3], 10);
-  centerText("ACT ONE COMPLETE", 46, PAL[2], 8);
-  wrapText("Every shadow in that chapel carried more weight than it should have.", 26)
+  if (F.mines) centerText("ACT ONE + THE MINES COMPLETE", 46, PAL[2], 8);
+  else centerText("ACT ONE COMPLETE", 46, PAL[2], 8);
+  wrapText(F.mines ? "Every shadow in that mine carried more weight than it should have." : "Every shadow in that chapel carried more weight than it should have.", 26)
     .forEach((l,i) => centerText(l, 72 + i*11, PAL[3], 8));
   if (Math.floor(frame/20)%2===0) centerText("A: play again", 124, PAL[2], 8);
 }
