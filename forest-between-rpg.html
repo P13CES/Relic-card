@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>THE FOREST BETWEEN</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0a0a0a; overflow:hidden; }
+  body { --bar:0px; display:flex; align-items:center; justify-content:center; font-family:"Courier New",monospace; -webkit-user-select:none; user-select:none; touch-action:none; }
+  body.touch { --bar:184px; }
+  #wrap { position:relative; width:min(100vw, calc((100dvh - var(--bar)) * 10 / 9)); display:flex; flex-direction:column; }
+  canvas#game { flex:none; }
+  canvas#game { width:100%; height:100%; display:block; image-rendering:pixelated; image-rendering:crisp-edges; background:#0f380f; }
+  #touch { position:relative; height:184px; flex:none; pointer-events:none; display:none; }
+  #touch.on { display:block; }
+  .tbtn { position:absolute; pointer-events:auto; background:rgba(155,188,15,0.16); border:2px solid rgba(155,188,15,0.45); border-radius:12px; color:#9bbc0f; font-size:22px; display:flex; align-items:center; justify-content:center; font-family:inherit; }
+  .tbtn:active { background:rgba(155,188,15,0.4); }
+  #dUp{left:44px;top:8px;width:58px;height:58px;} #dDn{left:44px;top:118px;width:58px;height:58px;}
+  #dLf{left:8px;top:63px;width:58px;height:58px;} #dRt{left:80px;top:63px;width:58px;height:58px;}
+  #bA{right:14px;top:56px;width:74px;height:74px;border-radius:50%;} #bB{right:100px;top:96px;width:62px;height:62px;border-radius:50%;}
+  #titlecard { position:absolute; left:0; right:0; top:0; aspect-ratio:10/9; background:#0f380f; color:#9bbc0f; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:5; text-align:center; padding:20px; }
+  #titlecard h1 { font-size:clamp(22px,6vw,44px); letter-spacing:4px; margin:0 0 10px; }
+  #titlecard p { font-size:clamp(11px,3vw,15px); line-height:1.7; max-width:520px; }
+  #titlecard .blink { margin-top:26px; animation:blink 1.1s steps(2) infinite; font-size:clamp(12px,3.4vw,17px); }
+  @keyframes blink { 50% { opacity:0; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="160" height="144"></canvas>
+  <div id="touch">
+    <div class="tbtn" id="dUp">&#9650;</div><div class="tbtn" id="dLf">&#9664;</div>
+    <div class="tbtn" id="dRt">&#9654;</div><div class="tbtn" id="dDn">&#9660;</div>
+    <div class="tbtn" id="bB">B</div><div class="tbtn" id="bA">A</div>
+  </div>
+  <div id="titlecard">
+    <h1>THE FOREST BETWEEN</h1>
+    <p>A Game Boy style tale, after P13CES's prose.<br><br>
+    D-pad / arrows to walk. A / Z to talk and read.<br>
+    Carry light. Mind the bell.</p>
+    <p class="blink">PRESS A TO BEGIN</p>
+  </div>
+</div>
+<script>
+"use strict";
+// ===================== THE FOREST BETWEEN =====================
+// Act One playable slice. Canvas 160x144, tiles 8x8, view 20x18.
+// Palette: classic GB four shades.
+const PAL = ["#0f380f","#306230","#8bac0f","#9bbc0f"];
+const cv = document.getElementById("game");
+const ctx = cv.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+const TW = 8, VW = 20, VH = 18; // tile px, view tiles
+
+// ---------- input ----------
+const keys = {};
+let pressedA = false, pressedB = false;
+addEventListener("keydown", e => {
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+  if (e.key === "z" || e.key === "Z" || e.key === " " || e.key === "Enter") pressedA = true;
+  if (e.key === "x" || e.key === "X") pressedB = true;
+});
+addEventListener("keyup", e => { keys[e.key] = false; });
+function dirHeld() {
+  if (keys.ArrowUp || keys.w || keys.W) return "up";
+  if (keys.ArrowDown || keys.s || keys.S) return "down";
+  if (keys.ArrowLeft || keys.a || keys.A) return "left";
+  if (keys.ArrowRight || keys.d || keys.D) return "right";
+  return null;
+}
+// touch controls
+const touchOn = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+if (touchOn) { document.getElementById("touch").classList.add("on"); document.body.classList.add("touch"); }
+let tdir = null;
+function bindHold(id, fn) {
+  const el = document.getElementById(id);
+  let lastTouch = 0;
+  const on = e => { e.preventDefault(); if (e.type === "touchstart") lastTouch = Date.now(); if (e.type === "mousedown" && Date.now() - lastTouch < 600) return; fn(true); };
+  const off = e => { e.preventDefault(); if (e.type === "mouseup" && Date.now() - lastTouch < 600) return; fn(false); };
+  el.addEventListener("touchstart", on, {passive:false});
+  el.addEventListener("touchend", off, {passive:false});
+  el.addEventListener("touchcancel", off, {passive:false});
+  el.addEventListener("mousedown", on); el.addEventListener("mouseup", off); el.addEventListener("mouseleave", off);
+}
+bindHold("dUp", v => tdir = v ? "up" : (tdir==="up"?null:tdir));
+bindHold("dDn", v => tdir = v ? "down" : (tdir==="down"?null:tdir));
+bindHold("dLf", v => tdir = v ? "left" : (tdir==="left"?null:tdir));
+bindHold("dRt", v => tdir = v ? "right" : (tdir==="right"?null:tdir));
+bindHold("bA", v => { if (v) pressedA = true; });
+bindHold("bB", v => { if (v) pressedB = true; });
+
+// ---------- helpers ----------
+function rect(x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function px(x,y,c){ ctx.fillStyle=c; ctx.fillRect(x|0,y|0,1,1); }
+// draw a sprite from a string bitmap, palette indices into PAL
+function spr(bitmap, dx, dy, pal) {
+  for (let y=0; y<bitmap.length; y++) for (let x=0; x<bitmap[y].length; x++) {
+    const ch = bitmap[y][x];
+    if (ch === "." || ch === " ") continue;
+    px(dx+x, dy+y, pal ? pal[ch] : PAL[+ch]);
+  }
+}
+function text(str, x, y, c, size) {
+  ctx.fillStyle = c || PAL[3];
+  ctx.font = (size||8) + "px 'Courier New',monospace";
+  ctx.textBaseline = "top";
+  ctx.fillText(str, x, y);
+}
+function centerText(str, y, c, size) {
+  ctx.fillStyle = c || PAL[3];
+  ctx.font = (size||8) + "px 'Courier New',monospace";
+  ctx.textBaseline = "top";
+  ctx.fillText(str, (160 - ctx.measureText(str).width)/2, y);
+}
+</script>
+<script>
+"use strict";
+// ===================== TILE ART =====================
+// Tiles are 8x8 drawn with rects. c: palette index.
+function tileGrass(x,y,v){ rect(x,y,8,8,PAL[2]); if(v){ px(x+2,y+3,PAL[1]); px(x+5,y+5,PAL[1]); px(x+3,y+6,PAL[0]); } }
+function tilePath(x,y){ rect(x,y,8,8,PAL[3]); rect(x,y,8,1,PAL[2]); rect(x,y+7,8,1,PAL[2]); }
+function tileTree(x,y){ rect(x,y,8,8,PAL[2]); rect(x+1,y,6,6,PAL[1]); rect(x+2,y+1,4,3,PAL[0]); rect(x+3,y+5,2,3,PAL[0]); }
+function tileDarkTree(x,y){ rect(x,y,8,8,PAL[1]); rect(x+1,y,6,6,PAL[0]); rect(x+3,y+2,2,2,PAL[1]); }
+function tileWall(x,y){ rect(x,y,8,8,PAL[1]); rect(x,y,8,2,PAL[0]); rect(x+1,y+3,2,2,PAL[0]); rect(x+5,y+4,2,2,PAL[0]); }
+function tileFloor(x,y){ rect(x,y,8,8,PAL[3]); px(x+2,y+2,PAL[2]); px(x+6,y+5,PAL[2]); }
+function tilePew(x,y){ rect(x,y,8,8,PAL[3]); rect(x+1,y+2,6,4,PAL[1]); rect(x+1,y+2,6,1,PAL[0]); }
+function tileDoor(x,y){ rect(x,y,8,8,PAL[0]); rect(x+2,y,4,8,PAL[1]); }
+function tileStatue(x,y){ rect(x,y,8,8,PAL[3]); rect(x+2,y+1,4,7,PAL[1]); rect(x+3,y,2,2,PAL[0]); }
+function tileScar(x,y){ rect(x,y,8,8,PAL[3]); rect(x+1,y+1,6,6,PAL[2]); rect(x+3,y,2,8,PAL[3]); } // pale scar on wall
+function tileTable(x,y){ rect(x,y,8,8,PAL[3]); rect(x+1,y+3,6,2,PAL[1]); rect(x+2,y+5,1,3,PAL[1]); rect(x+5,y+5,1,3,PAL[1]); px(x+3,y+2,PAL[0]); } // candle dot
+function tileRock(x,y){ rect(x,y,8,8,PAL[2]); rect(x+1,y+2,5,4,PAL[1]); rect(x+2,y+1,2,2,PAL[0]); }
+function tileQuarry(x,y){ rect(x,y,8,8,PAL[1]); rect(x,y,8,1,PAL[0]); rect(x+2,y+3,4,1,PAL[0]); rect(x+1,y+6,5,1,PAL[0]); }
+function tileWater(x,y,t){ rect(x,y,8,8,PAL[0]); rect(x+1,y+2+(t%3),3,1,PAL[1]); rect(x+4,y+5-(t%2),3,1,PAL[1]); }
+function tileGrassD(x,y){ rect(x,y,8,8,PAL[1]); px(x+2,y+4,PAL[0]); px(x+5,y+2,PAL[0]); }
+function tileStump(x,y){ rect(x,y,8,8,PAL[2]); rect(x+2,y+2,4,4,PAL[1]); rect(x+2,y+2,4,1,PAL[0]); }
+
+// tile keys: . grass  , path  T tree  D darktree  W wall  F floor  P pew  O door
+// S statue  X scar  = table  R rock  Q quarry  ~ water  g darkgrass  _ stump
+const TILEFN = { ".":tileGrass, ",":tilePath, "T":tileTree, "D":tileDarkTree, "W":tileWall, "F":tileFloor, "P":tilePew, "O":tileDoor, "S":tileStatue, "X":tileScar, "=":tileTable, "R":tileRock, "Q":tileQuarry, "~":tileWater, "g":tileGrassD, "_":tileStump };
+const SOLID = new Set(["T","D","W","P","S","X","=","R","Q","~","_"]);
+function drawTile(ch, sx, sy, t, variant) {
+  const fn = TILEFN[ch] || tileGrass;
+  if (ch === ".") fn(sx, sy, variant);
+  else if (ch === "~") fn(sx, sy, t);
+  else fn(sx, sy);
+}
+
+// ===================== SPRITES (8x12 humanoids) =====================
+const SPR_TRAVELER = [
+"..3333..",".333333.",".311313.",".333333.","..3223..",".333333.","33333333","3.3333.3",".322223.",".322223.",".311.113",".222.222"];
+const SPR_DAD = [
+"..3333..",".333333.",".311313.",".333333.",".222222.","22222222","2.2222.2",".222222.",".322223.",".311113.",".311.113",".111.111"];
+const SPR_SHELLEY = [
+"..0000..",".000000.",".033330.",".033330.","..0000..",".000000.","00000000","0.0000.0",".033330.",".000000.",".000000.",".111.111"];
+const SPR_MOFFAT = [
+"...00...","..0000..","..0110..","..0000..","...00...","..0000..",".000000.",".000000.",".000000.",".011110.",".000000.","00000000"];
+const SPR_BISHOP = [
+"..1111..",".111111.",".133331.",".111111.","..1111..",".111111.","11111111","1.1111.1",".111111.",".111111.",".333.333",".333.333"];
+const SPR_PAWN = [
+"...11...","..1111..","..1331..","..1111..","...11...","..1111..",".111111.","..1111..","..1111..","..3333..","..3..3..","........"];
+// palette for sprites: index chars map to PAL
+const PAL_SPR = { "0":PAL[0], "1":PAL[1], "2":PAL[2], "3":PAL[3] };
+
+// goblin eyes in the treeline: two glowing dots
+function drawEyes(sx, sy, t) {
+  const on = (Math.floor(t/30)%2)===0;
+  px(sx+2, sy+3, on?PAL[3]:PAL[2]); px(sx+5, sy+3, on?PAL[3]:PAL[2]);
+}
+</script>
+<script>
+"use strict";
+// ===================== MAPS (20x18) =====================
+const MAPS = {
+road: [
+"TTTTTTTTTTOTTTTTTTTT",
+"TDDT,,,,,,TTTTDDTTTT",
+"TDTT,,,,,,TTTDTTTTTT",
+"TTTT,,TTTTTTTTTTTTTT",
+"TDDT,,TTDDTTTTTDDTTT",
+"TTTT,,TTTTTTTTTTTTTT",
+"TTDT,,,,,,TTTTDTTTTT",
+"TTTT,,TTTTTDTTTTTTTT",
+"TDDT,,TTTTTTTTTDTTTT",
+"TTTT,,TTTTTTTTTTT,,,",
+"TTDT,,TTTTDTTTTTT,,,",
+"TTTT,,TTTTTTTTTTT,,,",
+"TDDT,,TTTTTTTTDTT,,,",
+"TTTT,,TTTTTTTTTTT,,,",
+"TTDT,,,,,,TTTTTTTTTT",
+"TTTT,,,,,,TTTDTTTTTT",
+"TDDT,,,,,,TTTTDDTTTT",
+"TTTT,,,,,,TTTTTTTTTT",
+],
+chapel: [
+"WWWWWWWWWWWWWWWWWWWW",
+"WFSSSFFFFFFFFSXSFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFPPPPFFFFPPPPFFFFW",
+"WFFPPPPFFFFPPPPFFFFW",
+"WFFPPPPFFFFPPPPFFFFW",
+"WFFPPPPFFFFPPPPFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFF=FFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFO",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WFFFFFFFFFFFFFFFFFFW",
+"WWWWWWWWWWOWWWWWWWWW",
+],
+yard: [
+"DDDDDDDDDDDDDDDDDDDD",
+"DDDDDDDDDDDDDDDDDDDD",
+"gggggggggggggggggggg",
+"gggggggggggggggggggg",
+"gggggggggggggggggggg",
+"gggggggggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"Oggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggggggggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggg,,gggggggggggggg",
+"gggggggggggggggggggg",
+"DDDDDDDDDDDDDDDDDDDD",
+],
+cut: [
+"QQQQQQQQQQQQQQQQQQQQ",
+"QRRQQQQQQQQQQQQQRQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQQRRQQQQQRRQQQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQ~~~~QQQQQQQQQQQQ",
+"QQQQ~~~~QQQQQQRRQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"OQQQQQQQQQQQQQQQQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQQRRQQQQQQQQQQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQQQQQQRRQQQQQQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQRRQQQQQQQRRQQQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+"QQQQQQQQQQQQQQQQRQQQ",
+"QQQQQQQQQQQQQQQQQQQQ",
+]
+};
+// validate
+for (const k in MAPS) {
+  if (MAPS[k].length !== 18) throw new Error("map " + k + " rows " + MAPS[k].length);
+  MAPS[k].forEach((r,i) => { if (r.length !== 20) throw new Error("map "+k+" row "+i+" len "+r.length); });
+}
+
+// ===================== DIALOGUE DATA =====================
+// line: [speaker, text]. speaker "" = narration.
+const D = {
+intro: [
+  ["DAD","Easy, now. The forest road is no place for rushing."],
+  ["DAD","When the bell tolls, do not run. Stand still."],
+  ["DAD","Goblins freeze at the sound. Silent at the Bell, they call it."],
+  ["YOU","And if I run?"],
+  ["DAD","Then you are the only thing moving, and everything hungry will see you."],
+  ["DAD","Shelley's chapel. North, through the trees. Stay on the path."],
+],
+toll: [
+  ["","The bell tolls, deep in the forest."],
+  ["","Every eye in the treeline goes still. Nothing moves."],
+  ["DAD","Stand still. Let it pass."],
+],
+greet: [
+  ["SHELLEY","Oh! You scared me."],
+  ["SHELLEY","Look at you. You used to hide under the second pew and frighten the collection plate."],
+  ["YOU","Hello, Bishop."],
+  ["SHELLEY","Shelley, love. The forest took my title years ago."],
+  ["SHELLEY","Walk with me. I was just on my way out."],
+],
+meat: [
+  ["SHELLEY","Arch Saint Moffat. He does not mind sharing."],
+  ["","She brushes the leaves from his shoulders, like tidying him for company, and sets the meat at his feet."],
+  ["SHELLEY","Forgive me, old friend."],
+  ["","Her prayer is the liturgy of the Turning, but the words are hers now. A prayer for free change, said outdoors where the city cannot hear it."],
+  ["YOU","Why is he out here, and not inside with the others?"],
+  ["SHELLEY","Change belongs with the wild. Come. It is cold, and the table is no warmer, but it is ours."],
+],
+pouch: [
+  ["","Her table holds a candle, her book, her beads."],
+  ["","A small pouch sits beside the candle, tied shut."],
+  ["","Dad looked at it once and did not touch it. You do the same."],
+],
+scar: [
+  ["","Six statues stand behind the podium. Your hands remember seven."],
+  ["","The middle right one is gone. The wall behind it is a lighter wood. A scar that never tanned."],
+  ["SHELLEY","There were seven. Now there are six. Count them however you like."],
+],
+job: [
+  ["SHELLEY","The White Court no longer holds at the treeline."],
+  ["SHELLEY","I need swords at the chapel while I sleep."],
+  ["SHELLEY","The old cut. Not the new working. First light."],
+  ["YOU","We will be there."],
+  ["SHELLEY","I know. Your father always comes when I ask. It is his best and worst habit."],
+],
+blocked: [
+  ["DAD","Not yet. First we see Shelley."],
+],
+cutin: [
+  ["","First light. The old cut, not the new working."],
+  ["","Pale green shapes move between the rocks."],
+],
+battlein: [
+  ["","A White Court Bishop steps from the rocks, scavenged light crawling on his hands."],
+  ["BISHOP","The church is ours by hunger. Bleed, little lamb."],
+],
+win: [
+  ["","The Bishop falls back into the rocks. The treeline is quiet."],
+  ["","On the walk home the treeline is full of eyes. Pale green, catching what is left of the light."],
+  ["","Behind you, the brush starts up again. Small and busy. Moving toward the chapel. Toward the meat. Toward Moffat."],
+],
+pew: [["","Under the second pew, the floorboards still remember you."]],
+candle: [["","The candle burns low. She will not let it go out."]],
+book: [["","Her book falls open to the liturgy of the Turning. The margins are full of her handwriting."]],
+moffat: [["","Weathered gray, kind face gone smooth. He faces the treeline."]],
+lose: [["","The forest goes dark. The bell tolls somewhere far away."]],
+};
+</script>
+<script>
+"use strict";
+// ===================== GAME STATE =====================
+const F = { intro:false, toll:false, greeted:false, meat:false, job:false, cutSeen:false, won:false };
+let mode = "title"; // title | world | dlg | battle | card | end
+const player = { x:10, y:16, px:80, py:128, dir:"up", moving:false, mx:0, my:0 };
+let curMap = "road";
+let frame = 0, fade = 0, fadeDir = 0, pending = null;
+
+const NPCS = {
+  road:   [ { id:"dad", spr:SPR_DAD, x:9, y:14 } ],
+  chapel: [ { id:"shelley", spr:SPR_SHELLEY, x:10, y:9 } ],
+  yard:   [ { id:"moffat", spr:SPR_MOFFAT, x:10, y:4 }, { id:"shelley", spr:SPR_SHELLEY, x:12, y:5 } ],
+  cut:    []
+};
+function npcAt(mapName, tx, ty) { return (NPCS[mapName]||[]).find(n => n.x===tx && n.y===ty); }
+function tileAt(mapName, tx, ty) {
+  if (ty < 0 || ty >= 18) return "T";
+  if (tx < 0 || tx >= 20) return "."; // edge: handled by exits
+  return MAPS[mapName][ty][tx];
+}
+function isSolid(mapName, tx, ty) {
+  const t = tileAt(mapName, tx, ty);
+  if (SOLID.has(t)) return true;
+  if (t === "O") return false;
+  if (npcAt(mapName, tx, ty)) return true;
+  return false;
+}
+
+// discrete nav with hold-to-repeat (menus, exam, battle cursor)
+let navCD = 0;
+function navDir() {
+  if (frame < navCD) return null;
+  const d = tdir || dirHeld();
+  if (d) { navCD = frame + 9; return d; }
+  return null;
+}
+
+// ===================== DIALOGUE =====================
+let dlg = null; // {pages, page, chars, done}
+function wrapText(s, width) {
+  const words = s.split(" "); const lines = []; let cur = "";
+  for (const w of words) {
+    if ((cur + " " + w).trim().length > width) { lines.push(cur.trim()); cur = w; }
+    else cur += " " + w;
+  }
+  if (cur.trim()) lines.push(cur.trim());
+  return lines;
+}
+function startDialogue(lines, onDone) {
+  const pages = [];
+  for (const [who, txt] of lines) {
+    const full = who ? who + ": " + txt : txt;
+    const wrapped = wrapText(full, 27);
+    for (let i=0; i<wrapped.length; i+=3) pages.push(wrapped.slice(i, i+3).join("\n"));
+  }
+  dlg = { pages, page:0, chars:0, onDone: onDone || null };
+  mode = "dlg";
+}
+function advanceDialogue() {
+  if (!dlg) return;
+  const pageText = dlg.pages[dlg.page];
+  if (dlg.chars < pageText.length) { dlg.chars = pageText.length; return; }
+  dlg.page++; dlg.chars = 0;
+  if (dlg.page >= dlg.pages.length) { const cb = dlg.onDone; dlg = null; mode = "world"; if (cb) cb(); }
+}
+function drawDialogue() {
+  rect(2, 104, 156, 38, PAL[3]);
+  rect(3, 105, 154, 36, PAL[0]);
+  rect(4, 106, 152, 34, PAL[3]);
+  const pageText = dlg.pages[dlg.page];
+  const shown = pageText.slice(0, Math.floor(dlg.chars));
+  const lines = shown.split("\n");
+  lines.forEach((l, i) => text(l, 8, 110 + i*10, PAL[0]));
+  if (dlg.chars >= pageText.length && Math.floor(frame/20)%2===0) text("v", 148, 132, PAL[0]);
+}
+
+// ===================== CARDS (title-style text screens) =====================
+let card = null;
+function showCard(lines, onDone) { card = { lines, onDone: onDone||null }; mode = "card"; }
+function drawCard() {
+  rect(0,0,160,144,PAL[0]);
+  card.lines.forEach((l,i) => centerText(l, 40 + i*13, PAL[3], 8));
+  if (Math.floor(frame/20)%2===0) centerText("PRESS A", 122, PAL[2], 8);
+}
+
+// ===================== TRANSITIONS =====================
+function goMap(name, sx, sy) {
+  fadeDir = 1; fade = 0;
+  pending = () => { curMap = name; player.x = sx; player.y = sy; player.px = sx*8; player.py = sy*8; player.moving = false; };
+}
+
+// ===================== INTERACTIONS =====================
+function faceTile() {
+  const d = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] }[player.dir];
+  return { tx: player.x + d[0], ty: player.y + d[1] };
+}
+function tryInteract() {
+  const { tx, ty } = faceTile();
+  const npc = npcAt(curMap, tx, ty);
+  const t = tileAt(curMap, tx, ty);
+  if (curMap === "chapel") {
+    if (npc && npc.id === "shelley") {
+      if (!F.greeted) { F.greeted = true; startDialogue(D.greet, () => goMap("yard", 6, 10)); return; }
+      if (F.meat && !F.job) { F.job = true; startDialogue(D.job); return; }
+      startDialogue([["SHELLEY","The old cut, love. First light. We will be listening for the bell."]]); return;
+    }
+    if (t === "=") { startDialogue(F.meat ? D.pouch : D.candle); return; }
+    if (t === "X") { startDialogue(D.scar); return; }
+    if (t === "P") { startDialogue(D.pew); return; }
+    if (t === "S") { startDialogue(D.book); return; }
+  }
+  if (curMap === "yard") {
+    if (npc && npc.id === "moffat") { startDialogue(D.moffat); return; }
+    if (npc && npc.id === "shelley") {
+      if (!F.meat) { F.meat = true; startDialogue(D.meat, () => goMap("chapel", 10, 11)); return; }
+      startDialogue([["SHELLEY","Inside, love. The table talk."]]); return;
+    }
+  }
+  if (curMap === "road") {
+    if (npc && npc.id === "dad") {
+      startDialogue([[ "DAD", F.job ? "First light, then. Stay close to me at the cut." : "North, through the trees. Stay on the path." ]]); return;
+    }
+  }
+}
+
+// ===================== WORLD UPDATE =====================
+let tollTimer = -1;
+function updateWorld() {
+  if (fadeDir === 1) { fade += 8; if (fade >= 255) { if (pending) { pending(); pending = null; } fadeDir = -1; } return; }
+  if (fadeDir === -1) { fade -= 8; if (fade <= 0) { fade = 0; fadeDir = 0; } return; }
+  if (tollTimer > 0) { tollTimer--; return; } // frozen at the bell
+
+  if (player.moving) {
+    player.px += player.mx; player.py += player.my;
+    if (player.px === player.x*8 && player.py === player.y*8) { player.moving = false; onStep(); }
+    return;
+  }
+  if (pressedA) { pressedA = false; tryInteract(); return; }
+  const d = tdir || dirHeld();
+  if (!d) return;
+  player.dir = d;
+  const dv = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] }[d];
+  const nx = player.x + dv[0], ny = player.y + dv[1];
+  // east exit from road
+  if (curMap === "road" && nx >= 20) {
+    if (F.job) { goMap("cut", 0, 8); }
+    else startDialogue(D.blocked);
+    return;
+  }
+  if (curMap === "cut" && nx < 0) { goMap("road", 19, 10); return; }
+  if (nx < 0 || nx >= 20 || ny < 0 || ny >= 18) return;
+  if (isSolid(curMap, nx, ny)) return;
+  player.x = nx; player.y = ny; player.moving = true; player.mx = dv[0]; player.py0 = 0; player.my = dv[1];
+}
+function onStep() {
+  const t = tileAt(curMap, player.x, player.y);
+  // doors
+  if (curMap === "road" && player.x === 10 && player.y === 0) { goMap("chapel", 10, 16); return; }
+  if (curMap === "chapel" && player.x === 10 && player.y === 17) { goMap("road", 10, 1); return; }
+  if (curMap === "chapel" && player.x === 19 && player.y === 10) { goMap("yard", 1, 9); return; }
+  if (curMap === "yard" && player.x === 0 && player.y === 9) { goMap("chapel", 18, 10); return; }
+  // toll beat on the road
+  if (curMap === "road" && !F.toll && player.y <= 8) {
+    F.toll = true; tollTimer = 50;
+    startDialogue(D.toll);
+    return;
+  }
+  // cut intro + battle trigger
+  if (curMap === "cut" && !F.cutSeen) { F.cutSeen = true; startDialogue(D.cutin); return; }
+  if (curMap === "cut" && F.cutSeen && mode === "world" && !F.won && player.x >= 8 && player.x <= 11 && player.y >= 6 && player.y <= 9) {
+    startDialogue(D.battlein, () => startBattle());
+    return;
+  }
+}
+
+// ===================== WORLD RENDER =====================
+const EYES = [[1,1],[17,1],[1,12],[17,3],[2,16],[15,14]];
+function drawWorld() {
+  ctx.clearRect(0,0,160,144);
+  const map = MAPS[curMap];
+  for (let y=0; y<18; y++) for (let x=0; x<20; x++) {
+    const ch = map[y][x];
+    const variant = ((x*7+y*13)%3)===0;
+    drawTile(ch, x*8, y*8, frame, variant);
+  }
+  if (curMap === "road") for (const [ex,ey] of EYES) drawEyes(ex*8, ey*8, tollTimer>0 ? 0 : frame);
+  // npcs
+  for (const n of (NPCS[curMap]||[])) spr(n.spr, n.x*8, n.y*8 - 4, PAL_SPR);
+  // player (slight bob while moving)
+  const bob = player.moving && Math.floor(frame/4)%2===0 ? -1 : 0;
+  spr(SPR_TRAVELER, player.px, player.py - 4 + bob, PAL_SPR);
+  // toll flash overlay
+  if (tollTimer > 0) { ctx.fillStyle = "rgba(155,188,15,0.18)"; ctx.fillRect(0,0,160,144); }
+  if (fade > 0) { ctx.fillStyle = "rgba(15,56,15," + (fade/255) + ")"; ctx.fillRect(0,0,160,144); }
+  // map label
+  const label = { road:"THE FOREST ROAD", chapel:"SHELLEY'S CHAPEL", yard:"THE SIDE YARD", cut:"THE OLD CUT" }[curMap];
+  rect(0,0,160,10,PAL[0]); text(label, 4, 1, PAL[3]);
+  if (!F.job && curMap!=="cut") text("", 0, 0, PAL[0]);
+}
+</script>
+<script>
+"use strict";
+// ===================== RELIC CARD EXAM =====================
+// The exam issues YOUR card before the walk. Mechanics from the Relic Card exam:
+// naming, five canon stations, card issuance. Card feeds the arena battle.
+const EXAM_QS = [
+  { st:"STATION 1: ORIGIN", q:"Where do you hail from?", opts:["Bluewall farmlands","The Outskirts","Ashden Harbor"] },
+  { st:"STATION 2: DUTY", q:"What is your duty?", opts:["Hold the line","Carry the light","Walk between"] },
+  { st:"STATION 3: TRAINING", q:"Who trained you?", opts:["My father","The road","No one"] },
+  { st:"STATION 4: COMBAT", q:"In a fight, you...", opts:["Strike first","Stand your ground","Borrow time"] },
+  { st:"STATION 5: RELIC", q:"A relic is...", opts:["A tool","A burden","A friend"] },
+];
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const exam = { step:"name", name:"", cur:0, qi:0, ans:[], done:false };
+const playerCard = { name:"TRAVELER", hp:25, maxhp:25, strain:0, pa:40, sa:40, ma:40, weight:"Unweighed" };
+
+function initExam() { exam.step = "name"; exam.name = ""; exam.cur = 0; exam.qi = 0; exam.ans = []; exam.done = false; mode = "exam"; }
+
+function examAffinity() {
+  // flavor only: answers nudge the three affinities
+  let pa = 40, sa = 40, ma = 40;
+  const a = exam.ans;
+  if (a[0] === 0) pa += 10; if (a[0] === 2) sa += 10;
+  if (a[1] === 0) pa += 10; if (a[1] === 1) sa += 15; if (a[1] === 2) ma += 15;
+  if (a[2] === 0) pa += 5;  if (a[2] === 1) ma += 15; if (a[2] === 2) sa += 5;
+  if (a[3] === 0) pa += 20; if (a[3] === 1) pa += 10; if (a[3] === 2) ma += 20;
+  if (a[4] === 0) ma += 10; if (a[4] === 1) sa += 10; if (a[4] === 2) sa += 15;
+  playerCard.pa = Math.min(95, pa); playerCard.sa = Math.min(95, sa); playerCard.ma = Math.min(95, ma);
+  playerCard.name = exam.name || "TRAVELER";
+}
+
+function updateExam() {
+  if (exam.step === "name") {
+    // grid: 26 letters + DEL + OK = 28 cells, 7 per row
+    const d = navDir();
+    if (d) {
+      if (d === "left") exam.cur = (exam.cur + 27) % 28;
+      if (d === "right") exam.cur = (exam.cur + 1) % 28;
+      if (d === "up") exam.cur = (exam.cur + 21) % 28;
+      if (d === "down") exam.cur = (exam.cur + 7) % 28;
+    }
+    if (pressedB) { pressedB = false; exam.name = exam.name.slice(0, -1); }
+    if (pressedA) {
+      pressedA = false;
+      if (exam.cur < 26 && exam.name.length < 8) exam.name += LETTERS[exam.cur];
+      else if (exam.cur === 26) exam.name = exam.name.slice(0, -1); // DEL
+      else if (exam.cur === 27) { exam.step = "q"; } // OK
+    }
+  } else if (exam.step === "q") {
+    const q = EXAM_QS[exam.qi];
+    const d = navDir();
+    if (d === "up" || d === "down") {
+      exam.cur = (exam.cur + (d === "down" ? 1 : q.opts.length - 1)) % q.opts.length;
+    }
+    if (pressedA) {
+      pressedA = false;
+      exam.ans.push(exam.cur); exam.cur = 0; exam.qi++;
+      if (exam.qi >= EXAM_QS.length) { examAffinity(); exam.step = "issued"; }
+    }
+  } else if (exam.step === "issued") {
+    if (pressedA) { pressedA = false; exam.done = true; beginStory(); }
+  }
+}
+
+function drawExam() {
+  rect(0,0,160,144,PAL[0]);
+  rect(4,4,152,136,PAL[3]); rect(6,6,148,132,PAL[0]);
+  if (exam.step === "name") {
+    centerText("RELIC CARD EXAM", 14, PAL[3], 8);
+    centerText("Your name, traveler:", 30, PAL[2], 8);
+    centerText(exam.name + (Math.floor(frame/20)%2===0 ? "_" : " "), 44, PAL[3], 10);
+    for (let i=0; i<28; i++) {
+      const cx = 22 + (i%7)*17, cy = 66 + Math.floor(i/7)*16;
+      const label = i < 26 ? LETTERS[i] : (i === 26 ? "DEL" : "OK");
+      if (i === exam.cur) { rect(cx-8, cy-4, 16, 14, PAL[3]); text(label, cx-6, cy-1, PAL[0]); }
+      else text(label, cx-6, cy-1, PAL[2]);
+    }
+    centerText("A: pick  B: erase", 132, PAL[2], 8);
+  } else if (exam.step === "q") {
+    const q = EXAM_QS[exam.qi];
+    centerText("RELIC CARD EXAM", 14, PAL[3], 8);
+    centerText(q.st, 30, PAL[2], 8);
+    const wq = wrapText(q.q, 24); wq.forEach((l,i) => centerText(l, 44+i*11, PAL[3], 8));
+    q.opts.forEach((o,i) => {
+      const y = 76 + i*16;
+      if (i === exam.cur) { rect(18, y-3, 124, 13, PAL[3]); text("> " + o, 24, y, PAL[0]); }
+      else text("  " + o, 24, y, PAL[2]);
+    });
+    centerText("A: answer", 132, PAL[2], 8);
+  } else if (exam.step === "issued") {
+    drawCardFace(20, 18, 120);
+    centerText("CARD ISSUED", 118, PAL[3], 8);
+    if (Math.floor(frame/20)%2===0) centerText("PRESS A", 130, PAL[2], 8);
+  }
+}
+
+// shared card face drawing; also used for the pause/status card view
+function drawCardFace(x, y, w) {
+  rect(x, y, w, 92, PAL[3]); rect(x+2, y+2, w-4, 88, PAL[0]);
+  centerText("RELIC CARD", y+8, PAL[3], 8);
+  centerText(playerCard.name, y+22, PAL[2], 9);
+  const s = "HP " + playerCard.hp + "/" + playerCard.maxhp + "  STRAIN " + playerCard.strain + "%";
+  centerText(s, y+38, PAL[3], 8);
+  centerText("PA " + playerCard.pa + "%  SA " + playerCard.sa + "%  MA " + playerCard.ma + "%", y+52, PAL[2], 8);
+  centerText("Weight: " + playerCard.weight, y+64, PAL[2], 8);
+  centerText("Strike / Candlelight", y+76, PAL[2], 8);
+}
+
+function beginStory() {
+  mode = "world"; curMap = "road";
+  player.x = 10; player.y = 16; player.px = 80; player.py = 128; player.dir = "up"; player.moving = false;
+  F.intro = true;
+  startDialogue(D.intro);
+}
+</script>
+<script>
+"use strict";
+// ===================== ARENA BATTLE (canon rules, GB shell) =====================
+// 8x8 grid, 2 AP per activation, AN energy, Strain bands 0-59/60-79/80-100,
+// Borrowed Time counters, 6-Tick Escalation Clock, 25 HP across the board.
+const GX = 28, GY = 10, CELL = 13;
+const OBS = [[3,2],[4,5],[2,6]];
+const SPELLS = [
+  { name:"STRIKE",      an:1, self:6, range:3, dmg:4, bonus:3 },
+  { name:"CANDLELIGHT", an:1, self:8, range:3, dmg:3, tstrain:5 }
+];
+let B = null;
+
+function mdist(a, b) { return Math.abs(a.x-b.x) + Math.abs(a.y-b.y); }
+function cellBlocked(x, y, ignore) {
+  if (x<0||x>7||y<0||y>7) return true;
+  if (OBS.some(o => o[0]===x && o[1]===y)) return true;
+  if (B && !(ignore==="player") && B.x===x && B.y===y) return true;
+  if (B) for (const e of B.enemies) if (e.hp>0 && e!==ignore && e.x===x && e.y===y) return true;
+  return false;
+}
+function esc() { return B.tick >= 6 ? 2 : (B.tick >= 4 ? 1 : 0); }
+function strainBand(s) { return s >= 80 ? "CRITICAL" : (s >= 60 ? "AMBER" : "SAFE"); }
+
+function startBattle() {
+  B = {
+    tick:1, phase:"menu", menuCur:0,
+    x:1, y:4, php:25, strain:0, an:2, ap:2, speed:3,
+    borrowDebt:false, borrowing:false, pendingCast:null,
+    relicUsed:false, msg:"", msgTimer:0,
+    cx:1, cy:4, pendingSpell:-1,
+    steps:[], stepIdx:0, stepTimer:0, paused:false,
+    enemies:[
+      { kind:"bishop", name:"BISHOP", spr:SPR_BISHOP, x:6, y:3, hp:25, strain:0, an:2, speed:2 },
+      { kind:"pawn",   name:"PAWN",   spr:SPR_PAWN,   x:6, y:5, hp:12, strain:0, an:0, speed:3 }
+    ]
+  };
+  mode = "battle";
+  bmsg("Your activation. 2 AP. The clock is ticking.");
+}
+function bmsg(s) { B.msg = s; B.msgTimer = 70; }
+
+function dmgPlayer(n, label, addStrain) {
+  B.php = Math.max(0, B.php - n);
+  if (addStrain) B.strain = Math.min(100, B.strain + addStrain);
+  bmsg(label + " " + n + " damage. HP " + B.php + "/25.");
+  if (B.php <= 0) B.phase = "lost";
+}
+function checkWin() {
+  if (B.enemies.every(e => e.hp <= 0)) {
+    B.phase = "won";
+    F.won = true;
+    playerCard.hp = B.php; playerCard.strain = B.strain;
+    return true;
+  }
+  return false;
+}
+function endActivation() {
+  if (checkWin()) return;
+  B.phase = "enemy"; B.paused = false;
+  B.steps = [];
+  B.steps.push(() => bmsg("The White Court moves..."));
+  for (const e of B.enemies) if (e.hp > 0) B.steps.push(((en) => () => enemyAct(en))(e));
+  B.steps.push(() => {
+    B.tick = Math.min(6, B.tick + 1);
+    B.an = Math.min(6, B.an + 2);
+    B.ap = B.borrowDebt ? 1 : 2; B.borrowDebt = false;
+    if (B.strain >= 80) { B.php = Math.max(0, B.php - 2); bmsg("CRITICAL STRAIN. The relic bites back for 2. HP " + B.php + "/25."); if (B.php<=0) { B.phase="lost"; return; } }
+    else bmsg("Tick " + B.tick + ". Your activation. " + B.ap + " AP.");
+    B.phase = "menu"; B.menuCur = 0;
+  });
+  B.stepIdx = 0; B.stepTimer = 30;
+}
+function nextStep() {
+  if (B.phase === "lost" || B.phase === "won") { B.steps = []; return; }
+  if (B.stepIdx >= B.steps.length) return;
+  const fn = B.steps[B.stepIdx++]; fn();
+  B.stepTimer = 55;
+}
+function moveToward(e, target) {
+  for (let s=0; s<e.speed; s++) {
+    const dx = Math.sign(target.x - e.x), dy = Math.sign(target.y - e.y);
+    const tries = [];
+    if (Math.abs(target.x-e.x) >= Math.abs(target.y-e.y)) tries.push([dx,0],[0,dy]); else tries.push([0,dy],[dx,0]);
+    let moved = false;
+    for (const [mx,my] of tries) {
+      if (mx===0 && my===0) continue;
+      const nx = e.x+mx, ny = e.y+my;
+      if (!cellBlocked(nx, ny, e)) { e.x = nx; e.y = ny; moved = true; break; }
+    }
+    if (!moved) break;
+  }
+}
+function enemyAct(e) {
+  if (e.hp <= 0) return;
+  if (e.kind === "bishop") {
+    if (e.strain >= 70) { e.strain = Math.max(0, e.strain - 15); bmsg("The Bishop vents. Light hisses off his hands."); return; }
+    if (mdist(e, B) <= 4 && e.an >= 1) { askBorrow(e); return; }
+    moveToward(e, B);
+    if (mdist(e, B) <= 4 && e.an >= 1) { askBorrow(e); return; }
+    bmsg("The Bishop closes in, patient as chess.");
+    return;
+  }
+  // pawn
+  moveToward(e, B);
+  if (mdist(e, B) === 1) dmgPlayer(3 + esc(), "The Pawn rakes you!");
+  else bmsg("The Pawn scrabbles closer through the rocks.");
+}
+function askBorrow(e) {
+  B.pendingCast = e; B.borrowing = true; B.paused = true;
+  B.msg = "BORROWED TIME! The Bishop casts SMITE.";
+  B.msgTimer = 99999;
+}
+function resolveBorrow(counter) {
+  const e = B.pendingCast; B.pendingCast = null; B.borrowing = false; B.paused = false;
+  e.an -= 1; e.strain = Math.min(100, e.strain + 10);
+  if (counter) {
+    B.borrowDebt = true;
+    bmsg("Borrowed! The Smite dies midair. The Bishop still pays AN and Strain for the casting.");
+  } else {
+    dmgPlayer(5 + esc(), "The Smite lands!", 8);
+  }
+  B.stepTimer = 55;
+}
+
+// ---- player actions ----
+function menuList() {
+  return [
+    { id:"move",   label:"MOVE" },
+    { id:"strike", label:"STRIKE 1AN" },
+    { id:"candle", label:"CANDLE 1AN" },
+    { id:"vent",   label:"VENT" },
+    { id:"relic",  label:"RELIC" + (B.relicUsed ? " (spent)" : " (free)") },
+    { id:"pass",   label:"PASS" }
+  ];
+}
+function doMenu(id) {
+  if (id === "move") { B.phase = "move"; B.cx = B.x; B.cy = B.y; }
+  else if (id === "strike" || id === "candle") {
+    const sp = SPELLS[id === "strike" ? 0 : 1];
+    if (B.an < sp.an) { bmsg("Not enough AN."); return; }
+    B.pendingSpell = id === "strike" ? 0 : 1;
+    const t = B.enemies.find(e => e.hp>0 && mdist(e,B) <= sp.range);
+    if (!t) { bmsg("No target in range 1-" + sp.range + "."); return; }
+    B.cx = t.x; B.cy = t.y; B.phase = "target";
+  }
+  else if (id === "vent") { B.ap -= 1; B.strain = Math.max(0, B.strain - 15); bmsg("You vent. Strain " + B.strain + "%."); afterAction(); }
+  else if (id === "relic") {
+    if (B.relicUsed) { bmsg("The candle is spent for this bout."); return; }
+    B.relicUsed = true; B.php = Math.min(25, B.php + 6); B.strain = Math.max(0, B.strain - 10);
+    bmsg("Dad's Candle flares. Warmth pushes the dark back. HP " + B.php + "/25.");
+  }
+  else if (id === "pass") { endActivation(); }
+}
+function afterAction() {
+  if (checkWin()) return;
+  if (B.ap <= 0) endActivation();
+}
+function doMoveTo(cx, cy) {
+  if (mdist({x:cx,y:cy}, B) > B.speed || cellBlocked(cx, cy) || (cx===B.x && cy===B.y)) { bmsg("Cannot move there."); return; }
+  B.x = cx; B.y = cy; B.ap -= 1; bmsg("You move.");
+  B.phase = "menu"; afterAction();
+}
+function doCastAt(cx, cy) {
+  const sp = SPELLS[B.pendingSpell];
+  const e = B.enemies.find(en => en.hp>0 && en.x===cx && en.y===cy);
+  if (!e || mdist(e, B) > sp.range || mdist(e, B) < 1) { bmsg("No target there."); return; }
+  const preStrain = B.strain;
+  B.ap -= 1; B.an -= sp.an; B.strain = Math.min(100, B.strain + sp.self);
+  let dmg = sp.dmg + esc() + (sp.bonus && e.strain >= 40 ? sp.bonus : 0);
+  if (preStrain >= 60) dmg = Math.max(1, dmg - 1);
+  e.hp = Math.max(0, e.hp - dmg);
+  if (sp.tstrain) e.strain = Math.min(100, e.strain + sp.tstrain);
+  bmsg(sp.name + " hits the " + e.name + " for " + dmg + ". " + (e.hp<=0 ? "It falls!" : e.name + " HP " + e.hp + "."));
+  B.phase = "menu"; afterAction();
+}
+
+function updateBattle() {
+  if (B.phase === "won") { if (pressedA) { pressedA = false; startDialogue(D.win, () => showCard(["THE FOREST BETWEEN","","End of Act One.","Ledger: Bishop and Pawn felled.","Strain at close: " + playerCard.strain + "%.","","Thank you for playing."], () => { mode = "endpage"; })); } return; }
+  if (B.phase === "lost") { if (pressedA) { pressedA = false; showCard(["The forest goes dark.","The bell tolls, far away.","","Press A to try","the cut again."], () => startBattle()); } return; }
+  if (B.borrowing) {
+    if (pressedA) { pressedA = false; resolveBorrow(true); }
+    else if (pressedB) { pressedB = false; resolveBorrow(false); }
+    return;
+  }
+  if (B.phase === "enemy") {
+    pressedA = false; pressedB = false;
+    if (!B.paused) { B.stepTimer--; if (B.stepTimer <= 0) nextStep(); }
+    return;
+  }
+  if (B.msgTimer > 0) { B.msgTimer--; if (pressedA) { pressedA = false; B.msgTimer = 0; } if (B.msgTimer > 0) return; }
+  // grid cursor phases
+  if (B.phase === "move" || B.phase === "target") {
+    const d = navDir();
+    if (d) {
+      if (d==="up") B.cy = Math.max(0, B.cy-1); if (d==="down") B.cy = Math.min(7, B.cy+1);
+      if (d==="left") B.cx = Math.max(0, B.cx-1); if (d==="right") B.cx = Math.min(7, B.cx+1);
+    }
+    if (pressedB) { pressedB = false; B.phase = "menu"; return; }
+    if (pressedA) { pressedA = false; if (B.phase==="move") doMoveTo(B.cx, B.cy); else doCastAt(B.cx, B.cy); }
+    return;
+  }
+  // menu
+  const d2 = navDir();
+  if (d2 === "up" || d2 === "down") {
+    B.menuCur = (B.menuCur + (d2 === "down" ? 1 : 5)) % 6;
+  }
+  if (pressedA) { pressedA = false; doMenu(menuList()[B.menuCur].id); }
+}
+
+function drawBattle() {
+  rect(0,0,160,144,PAL[0]);
+  const hud = "T" + B.tick + "/6 AP" + B.ap + " AN" + B.an + " HP" + B.php + "/25 S" + B.strain + "%";
+  text(hud, 3, 1, PAL[3]);
+  if (esc() > 0) text("ESC+" + esc(), 126, 1, PAL[1]);
+  // grid (8x8, 13px cells)
+  for (let y=0; y<8; y++) for (let x=0; x<8; x++) {
+    const sx = GX + x*CELL, sy = GY + y*CELL;
+    rect(sx, sy, CELL, CELL, (x+y)%2 ? PAL[1] : PAL[2]);
+    rect(sx, sy, CELL, 1, PAL[0]); rect(sx, sy, 1, CELL, PAL[0]);
+    if (OBS.some(o => o[0]===x && o[1]===y)) { rect(sx+2, sy+4, 9, 6, PAL[0]); rect(sx+4, sy+2, 5, 4, PAL[0]); }
+  }
+  // range highlights
+  if (B.phase === "move") {
+    for (let y=0; y<8; y++) for (let x=0; x<8; x++)
+      if (mdist({x,y}, B) <= B.speed && !cellBlocked(x, y)) { ctx.fillStyle = "rgba(155,188,15,0.35)"; ctx.fillRect(GX+x*CELL+1, GY+y*CELL+1, CELL-2, CELL-2); }
+  }
+  if (B.phase === "target") {
+    const sp = SPELLS[B.pendingSpell];
+    for (const e of B.enemies) if (e.hp>0 && mdist(e,B) <= sp.range && mdist(e,B) >= 1) {
+      ctx.fillStyle = "rgba(155,188,15,0.35)"; ctx.fillRect(GX+e.x*CELL+1, GY+e.y*CELL+1, CELL-2, CELL-2);
+    }
+  }
+  // units
+  const drawUnit = (sprt, ux, uy, hp, maxhp) => {
+    spr(sprt, GX + ux*CELL + 2, GY + uy*CELL, PAL_SPR);
+    rect(GX + ux*CELL + 1, GY + uy*CELL + 11, 11, 2, PAL[0]);
+    rect(GX + ux*CELL + 1, GY + uy*CELL + 11, Math.round(11 * hp/maxhp), 2, PAL[3]);
+  };
+  for (const e of B.enemies) if (e.hp > 0) drawUnit(e.spr, e.x, e.y, e.hp, e.kind==="bishop" ? 25 : 12);
+  drawUnit(SPR_TRAVELER, B.x, B.y, B.php, 25);
+  // cursor
+  if ((B.phase === "move" || B.phase === "target") && Math.floor(frame/15)%2===0) {
+    const sx = GX + B.cx*CELL, sy = GY + B.cy*CELL;
+    ctx.strokeStyle = PAL[3]; ctx.lineWidth = 1; ctx.strokeRect(sx+0.5, sy+0.5, CELL-1, CELL-1);
+  }
+  // bottom panel
+  rect(0, 116, 160, 28, PAL[3]); rect(1, 117, 158, 26, PAL[0]); rect(2, 118, 156, 24, PAL[3]);
+  if (B.borrowing) {
+    text("BORROWED TIME!", 6, 119, PAL[0]);
+    text("A: counter (borrow 1 AP)", 6, 128, PAL[0]);
+    text("B: take the Smite", 6, 137, PAL[0]);
+  } else if (B.phase === "enemy" || B.msgTimer > 0 || B.phase === "won" || B.phase === "lost") {
+    const lines = wrapText(B.msg || "...", 30);
+    lines.slice(0,3).forEach((l,i) => text(l, 6, 119 + i*9, PAL[0]));
+    if (B.phase === "won" || B.phase === "lost") text("PRESS A", 112, 137, PAL[0]);
+  } else if (B.phase === "move" || B.phase === "target") {
+    text(B.phase === "move" ? "MOVE: pick a glowing square." : "TARGET: pick the enemy.", 6, 119, PAL[0]);
+    text("A: confirm   B: back", 6, 128, PAL[0]);
+  } else {
+    const opts = menuList();
+    opts.forEach((o,i) => {
+      const col = i % 2, row = Math.floor(i/2);
+      const x = 6 + col*78, y = 119 + row*9;
+      text((i === B.menuCur ? ">" : " ") + o.label, x, y, PAL[0]);
+    });
+  }
+}
+
+</script>
+<script>
+"use strict";
+// ===================== MAIN LOOP =====================
+function drawEnd() {
+  rect(0,0,160,144,PAL[0]);
+  centerText("THE FOREST BETWEEN", 26, PAL[3], 10);
+  centerText("ACT ONE COMPLETE", 46, PAL[2], 8);
+  wrapText("Every shadow in that chapel carried more weight than it should have.", 26)
+    .forEach((l,i) => centerText(l, 72 + i*11, PAL[3], 8));
+  if (Math.floor(frame/20)%2===0) centerText("A: play again", 124, PAL[2], 8);
+}
+
+function loop() {
+  frame++;
+  // ---- update ----
+  if (mode === "title") {
+    if (pressedA) { pressedA = false; document.getElementById("titlecard").style.display = "none"; initExam(); }
+  } else if (mode === "exam") {
+    updateExam();
+  } else if (mode === "dlg") {
+    if (dlg) {
+      dlg.chars += 0.7;
+      if (pressedA) { pressedA = false; advanceDialogue(); }
+    }
+  } else if (mode === "card") {
+    if (pressedA) { pressedA = false; const cb = card ? card.onDone : null; card = null; if (cb) cb(); else mode = "world"; }
+  } else if (mode === "cardview") {
+    if (pressedA || pressedB) { pressedA = false; pressedB = false; mode = "world"; }
+  } else if (mode === "battle") {
+    updateBattle();
+  } else if (mode === "world") {
+    if (pressedB && !player.moving && fadeDir === 0 && !dlg) { pressedB = false; mode = "cardview"; }
+    else updateWorld();
+  } else if (mode === "endpage") {
+    if (pressedA) { pressedA = false; location.reload(); }
+  }
+  // ---- render ----
+  if (mode === "title") { rect(0,0,160,144,PAL[0]); }
+  else if (mode === "exam") drawExam();
+  else if (mode === "dlg") { drawWorld(); drawDialogue(); }
+  else if (mode === "card") drawCard();
+  else if (mode === "cardview") {
+    drawWorld();
+    ctx.fillStyle = "rgba(15,56,15,0.78)"; ctx.fillRect(0,0,160,144);
+    drawCardFace(20, 20, 120);
+    centerText("B: back", 124, PAL[2], 8);
+  }
+  else if (mode === "battle") drawBattle();
+  else if (mode === "world") drawWorld();
+  else if (mode === "endpage") drawEnd();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---- tap handling (mobile) ----
+cv.addEventListener("click", e => {
+  const r = cv.getBoundingClientRect();
+  const cx = (e.clientX - r.left) / r.width * 160;
+  const cy = (e.clientY - r.top) / r.height * 144;
+  if (mode === "exam" && exam.step === "name") {
+    const col = Math.round((cx - 22) / 17), row = Math.round((cy - 66) / 16);
+    if (col >= 0 && col < 7 && row >= 0 && row < 4) { exam.cur = row * 7 + col; pressedA = true; return; }
+  }
+  if (mode === "battle" && B && (B.phase === "move" || B.phase === "target")) {
+    const cellX = Math.floor((cx - GX) / CELL), cellY = Math.floor((cy - GY) / CELL);
+    if (cellX >= 0 && cellX < 8 && cellY >= 0 && cellY < 8) {
+      B.cx = cellX; B.cy = cellY;
+      if (B.phase === "move") doMoveTo(cellX, cellY); else doCastAt(cellX, cellY);
+      return;
+    }
+  }
+  pressedA = true;
+});
+document.getElementById("titlecard").addEventListener("click", () => { pressedA = true; });
+</script>
+</body>
+</html>
